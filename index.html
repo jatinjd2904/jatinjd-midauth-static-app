@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Deepti Mid Auth Test (MSAL)</title>
+  <!-- MSAL.js library -->
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+</head>
+<body>
+  <h1>Deepti App Auth Test (MSAL Direct Auth)</h1>
+
+  <!-- Auth buttons -->
+  <button onclick="login()">Sign in with Azure AD</button>
+  <button onclick="logout()">Sign out</button>
+
+  <pre id="user"></pre>
+
+  <script>
+    // MSAL Configuration - YOU NEED TO UPDATE THESE VALUES
+    const msalConfig = {
+      auth: {
+        clientId: "a2187d50-1812-4475-a27a-10cfbb98ab43",
+        authority: "https://login.microsoftonline.com/0f7bc4c9-8010-4190-a9fe-1fcedbefc4e8",
+        redirectUri: window.location.origin + "/index.html"
+      },
+      cache: {
+        cacheLocation: "localStorage",
+        storeAuthStateInCookie: false
+      }
+    };
+
+    // Scopes for token request
+    const tokenRequest = {
+      scopes: ["User.Read", "openid", "profile", "email"]
+    };
+
+    // Initialize MSAL
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+    // Store the access token globally
+    let currentAccessToken = null;
+
+    // Define window.auth.getAuthenticationToken for Omnichannel authenticated chat
+    window.auth = {};
+    window.auth.getAuthenticationToken = async function(callback) {
+      console.log('window.auth.getAuthenticationToken() called by Omnichannel widget');
+
+      if (currentAccessToken) {
+        console.log('✅ Returning cached AAD access token:', currentAccessToken);
+        callback(currentAccessToken);
+      } else {
+        console.error('❌ No access token available. User may not be logged in.');
+        callback(null);
+      }
+    };
+
+    // Login function
+    async function login() {
+      try {
+        console.log('Initiating MSAL login...');
+        const loginResponse = await msalInstance.loginPopup(tokenRequest);
+        console.log('Login successful:', loginResponse);
+
+        // Get access token
+        await getToken();
+
+      } catch (error) {
+        console.error('Login failed:', error);
+        alert('Login failed: ' + error.message);
+      }
+    }
+
+    // Get access token
+    async function getToken() {
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length === 0) {
+        console.error('No accounts found');
+        return;
+      }
+
+      const request = {
+        ...tokenRequest,
+        account: accounts[0]
+      };
+
+      try {
+        // Try to get token silently
+        const response = await msalInstance.acquireTokenSilent(request);
+        currentAccessToken = response.accessToken;
+
+        console.log('✅ AAD Access Token acquired:', currentAccessToken);
+        console.log('Token length:', currentAccessToken.length);
+        console.log('Token expires:', new Date(response.expiresOn));
+
+        // Display user info
+        displayUserInfo(response.account, currentAccessToken);
+
+        // Test the getAuthenticationToken function
+        setTimeout(function() {
+          console.log('Testing window.auth.getAuthenticationToken...');
+          window.auth.getAuthenticationToken(function(token) {
+            if (token) {
+              console.log('✅ Test successful - Token retrieved:', token);
+            } else {
+              console.error('❌ Test failed: No token returned');
+            }
+          });
+        }, 500);
+
+      } catch (error) {
+        console.error('Silent token acquisition failed, trying popup:', error);
+
+        // Fall back to interactive method
+        try {
+          const response = await msalInstance.acquireTokenPopup(request);
+          currentAccessToken = response.accessToken;
+
+          console.log('✅ AAD Access Token acquired via popup:', currentAccessToken);
+          displayUserInfo(response.account, currentAccessToken);
+        } catch (popupError) {
+          console.error('Token acquisition failed:', popupError);
+        }
+      }
+    }
+
+    // Display user info
+    function displayUserInfo(account, token) {
+      const userInfo = {
+        username: account.username,
+        name: account.name,
+        accountId: account.homeAccountId,
+        tenantId: account.tenantId
+      };
+
+      document.getElementById("user").innerHTML =
+        '<h3>User Info:</h3><pre style="background:#e8f5e9;padding:10px;">' +
+        JSON.stringify(userInfo, null, 2) +
+        '</pre>' +
+        '<h3>Access Token (Real AAD JWT):</h3><pre style="background:#f0f0f0;padding:10px;word-wrap:break-word;font-size:11px;">' +
+        token +
+        '</pre>';
+    }
+
+    // Logout function
+    function logout() {
+      currentAccessToken = null;
+      msalInstance.logoutPopup()
+        .then(() => {
+          console.log('Logged out successfully');
+          document.getElementById("user").innerHTML = '';
+        })
+        .catch(error => {
+          console.error('Logout failed:', error);
+        });
+    }
+
+    // Check if user is already logged in on page load
+    msalInstance.handleRedirectPromise()
+      .then(response => {
+        if (response) {
+          console.log('Redirect response:', response);
+          getToken();
+        } else {
+          const accounts = msalInstance.getAllAccounts();
+          if (accounts.length > 0) {
+            console.log('User already logged in');
+            getToken();
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error handling redirect:', error);
+      });
+  </script>
+
+  <!-- Omnichannel Live Chat widget -->
+  <script
+    id="Microsoft_Omnichannel_LCWidget"
+    src="https://oc-cdn-ppe2.azureedge.net/livechatwidget/scripts/LiveChatBootstrapper.js"
+    data-app-id="99ed6331-f22b-41a9-bf6b-6a8cbea90557"
+    data-lcw-version="test"
+    data-org-id="e1296a96-4d7f-f011-b4c2-000d3a32daab"
+    data-org-url="https://m-e1296a96-4d7f-f011-b4c2-000d3a32daab.preprod.omnichannelengagementhub.com">
+  </script>
+
+</body>
+</html>
