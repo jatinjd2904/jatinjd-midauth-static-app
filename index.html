@@ -56,13 +56,8 @@
     // Login function
     async function login() {
       try {
-        console.log('Initiating MSAL login...');
-        const loginResponse = await msalInstance.loginPopup(tokenRequest);
-        console.log('Login successful:', loginResponse);
-
-        // Get access token
-        await getToken();
-
+        console.log('Initiating MSAL login redirect...');
+        await msalInstance.loginRedirect(tokenRequest);
       } catch (error) {
         console.error('Login failed:', error);
         alert('Login failed: ' + error.message);
@@ -107,18 +102,10 @@
         }, 500);
 
       } catch (error) {
-        console.error('Silent token acquisition failed, trying popup:', error);
+        console.error('Silent token acquisition failed, using redirect:', error);
 
-        // Fall back to interactive method
-        try {
-          const response = await msalInstance.acquireTokenPopup(request);
-          currentAccessToken = response.accessToken;
-
-          console.log('✅ AAD Access Token acquired via popup:', currentAccessToken);
-          displayUserInfo(response.account, currentAccessToken);
-        } catch (popupError) {
-          console.error('Token acquisition failed:', popupError);
-        }
+        // Fall back to interactive redirect method
+        await msalInstance.acquireTokenRedirect(request);
       }
     }
 
@@ -143,14 +130,10 @@
     // Logout function
     function logout() {
       currentAccessToken = null;
-      msalInstance.logoutPopup()
-        .then(() => {
-          console.log('Logged out successfully');
-          document.getElementById("user").innerHTML = '';
-        })
-        .catch(error => {
-          console.error('Logout failed:', error);
-        });
+      const logoutRequest = {
+        account: msalInstance.getAllAccounts()[0]
+      };
+      msalInstance.logoutRedirect(logoutRequest);
     }
 
     // Check if user is already logged in on page load
@@ -158,7 +141,24 @@
       .then(response => {
         if (response) {
           console.log('Redirect response:', response);
-          getToken();
+          console.log('Login successful via redirect');
+          // Token is in the response
+          currentAccessToken = response.accessToken;
+          console.log('✅ AAD Access Token acquired:', currentAccessToken);
+          console.log('Token length:', currentAccessToken.length);
+          displayUserInfo(response.account, currentAccessToken);
+
+          // Test the getAuthenticationToken function
+          setTimeout(function() {
+            console.log('Testing window.auth.getAuthenticationToken...');
+            window.auth.getAuthenticationToken(function(token) {
+              if (token) {
+                console.log('✅ Test successful - Token retrieved:', token);
+              } else {
+                console.error('❌ Test failed: No token returned');
+              }
+            });
+          }, 500);
         } else {
           const accounts = msalInstance.getAllAccounts();
           if (accounts.length > 0) {
