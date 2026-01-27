@@ -36,19 +36,75 @@
     // Initialize MSAL
     const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-    // Store the access token globally
+    // Store the access token and expiration time globally
     let currentAccessToken = null;
+    let tokenExpiresOn = null;
+
+    // Check if token is expired or will expire soon (within 5 minutes)
+    function isTokenExpired() {
+      if (!tokenExpiresOn) return true;
+      const now = new Date();
+      const expiryTime = new Date(tokenExpiresOn);
+      const timeUntilExpiry = expiryTime - now;
+      const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+      return timeUntilExpiry < fiveMinutes;
+    }
+
+    // Refresh the access token
+    async function refreshToken() {
+      console.log('🔄 Refreshing access token...');
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length === 0) {
+        console.error('No accounts found for token refresh');
+        return null;
+      }
+
+      const request = {
+        ...tokenRequest,
+        account: accounts[0]
+      };
+
+      try {
+        const response = await msalInstance.acquireTokenSilent(request);
+        currentAccessToken = response.accessToken;
+        tokenExpiresOn = response.expiresOn;
+        console.log('✅ Token refreshed successfully');
+        console.log('New token expires:', new Date(tokenExpiresOn));
+        return currentAccessToken;
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        // Fall back to interactive redirect
+        await msalInstance.acquireTokenRedirect(request);
+        return null;
+      }
+    }
 
     // Define window.auth.getAuthenticationToken for Omnichannel authenticated chat
     window.auth = {};
     window.auth.getAuthenticationToken = async function(callback) {
       console.log('window.auth.getAuthenticationToken() called by Omnichannel widget');
 
-      if (currentAccessToken) {
-        console.log('✅ Returning cached AAD access token:', currentAccessToken);
-        callback(currentAccessToken);
-      } else {
-        console.error('❌ No access token available. User may not be logged in.');
+      try {
+        // Check if token exists and is valid
+        if (currentAccessToken && !isTokenExpired()) {
+          console.log('✅ Returning cached AAD access token:', currentAccessToken);
+          callback(currentAccessToken);
+        } else if (currentAccessToken && isTokenExpired()) {
+          // Token exists but is expired or expiring soon - refresh it
+          console.log('⚠️ Token expired or expiring soon, refreshing...');
+          const newToken = await refreshToken();
+          if (newToken) {
+            callback(newToken);
+          } else {
+            console.error('❌ Token refresh failed');
+            callback(null);
+          }
+        } else {
+          console.error('❌ No access token available. User may not be logged in.');
+          callback(null);
+        }
+      } catch (error) {
+        console.error('Error in getAuthenticationToken:', error);
         callback(null);
       }
     };
@@ -81,10 +137,11 @@
         // Try to get token silently
         const response = await msalInstance.acquireTokenSilent(request);
         currentAccessToken = response.accessToken;
+        tokenExpiresOn = response.expiresOn;
 
         console.log('✅ AAD Access Token acquired:', currentAccessToken);
         console.log('Token length:', currentAccessToken.length);
-        console.log('Token expires:', new Date(response.expiresOn));
+        console.log('Token expires:', new Date(tokenExpiresOn));
 
         // Display user info
         displayUserInfo(response.account, currentAccessToken);
@@ -130,6 +187,7 @@
     // Logout function
     function logout() {
       currentAccessToken = null;
+      tokenExpiresOn = null;
       const logoutRequest = {
         account: msalInstance.getAllAccounts()[0]
       };
@@ -144,8 +202,10 @@
           console.log('Login successful via redirect');
           // Token is in the response
           currentAccessToken = response.accessToken;
+          tokenExpiresOn = response.expiresOn;
           console.log('✅ AAD Access Token acquired:', currentAccessToken);
           console.log('Token length:', currentAccessToken.length);
+          console.log('Token expires:', new Date(tokenExpiresOn));
           displayUserInfo(response.account, currentAccessToken);
 
           // Test the getAuthenticationToken function
@@ -176,10 +236,10 @@
   <script
     id="Microsoft_Omnichannel_LCWidget"
     src="https://oc-cdn-ppe2.azureedge.net/livechatwidget/scripts/LiveChatBootstrapper.js"
-    data-app-id="99ed6331-f22b-41a9-bf6b-6a8cbea90557"
+    data-app-id="1e27fef0-15f7-4202-bf85-f736d6c67735"
     data-lcw-version="test"
-    data-org-id="e1296a96-4d7f-f011-b4c2-000d3a32daab"
-    data-org-url="https://m-e1296a96-4d7f-f011-b4c2-000d3a32daab.preprod.omnichannelengagementhub.com">
+    data-org-id="1e9d7bbe-facf-f011-8537-000d3a59231e"
+    data-org-url="https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com">
   </script>
 
 </body>
