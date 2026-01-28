@@ -14,6 +14,39 @@
 
   <pre id="user"></pre>
 
+  <!-- Chat Widget Configuration Section -->
+  <hr style="margin: 30px 0;">
+  <h2>Configure Chat Widgets</h2>
+  <div style="background: #f5f5f5; padding: 20px; margin-bottom: 20px;">
+    <h3>Widget 1 (MidAuth Chat Widget)</h3>
+    <form id="widget1-config">
+      <label>App ID: <input type="text" id="widget1-appId" value="9c155eb8-61cc-41ff-9433-16355ce73ed2" style="width: 300px;"></label><br><br>
+      <label>Org ID: <input type="text" id="widget1-orgId" value="1e9d7bbe-facf-f011-8537-000d3a59231e" style="width: 300px;"></label><br><br>
+      <label>Org URL: <input type="text" id="widget1-orgUrl" value="https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com" style="width: 500px;"></label><br><br>
+      <label>Script URL: <input type="text" id="widget1-scriptUrl" value="https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js" style="width: 500px;"></label><br><br>
+      <button type="button" onclick="loadWidget(1)">Load Widget 1</button>
+      <button type="button" onclick="removeWidget(1)">Remove Widget 1</button>
+    </form>
+  </div>
+
+  <div style="background: #f5f5f5; padding: 20px; margin-bottom: 20px;">
+    <h3>Widget 2 (UnAuth Chat)</h3>
+    <form id="widget2-config">
+      <label>App ID: <input type="text" id="widget2-appId" value="50fbd2aa-1a19-475f-aeb6-59c8d15c8387" style="width: 300px;"></label><br><br>
+      <label>Org ID: <input type="text" id="widget2-orgId" value="1e9d7bbe-facf-f011-8537-000d3a59231e" style="width: 300px;"></label><br><br>
+      <label>Org URL: <input type="text" id="widget2-orgUrl" value="https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com" style="width: 500px;"></label><br><br>
+      <label>Script URL: <input type="text" id="widget2-scriptUrl" value="https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js" style="width: 500px;"></label><br><br>
+      <button type="button" onclick="loadWidget(2)">Load Widget 2</button>
+      <button type="button" onclick="removeWidget(2)">Remove Widget 2</button>
+    </form>
+  </div>
+
+  <div id="widget-status" style="background: #e8f5e9; padding: 15px; margin-bottom: 20px; display: none;">
+    <h3>Widget Status:</h3>
+    <pre id="widget-status-text"></pre>
+  </div>
+  <hr style="margin: 30px 0;">
+
   <script>
     // MSAL Configuration - YOU NEED TO UPDATE THESE VALUES
     const msalConfig = {
@@ -231,17 +264,87 @@
       .catch(error => {
         console.error('Error handling redirect:', error);
       });
+
+    // Widget Management Functions
+    const loadedWidgets = new Set();
+
+    function loadWidget(widgetNumber) {
+      const appId = document.getElementById(`widget${widgetNumber}-appId`).value;
+      const orgId = document.getElementById(`widget${widgetNumber}-orgId`).value;
+      const orgUrl = document.getElementById(`widget${widgetNumber}-orgUrl`).value;
+      const scriptUrl = document.getElementById(`widget${widgetNumber}-scriptUrl`).value;
+
+      // Validate inputs
+      if (!appId || !orgId || !orgUrl || !scriptUrl) {
+        showWidgetStatus(`❌ Widget ${widgetNumber}: All fields are required`);
+        return;
+      }
+
+      // Check if already loaded
+      if (loadedWidgets.has(widgetNumber)) {
+        showWidgetStatus(`⚠️ Widget ${widgetNumber} is already loaded. Remove it first to reload.`);
+        return;
+      }
+
+      // Create script element with unique ID
+      const script = document.createElement('script');
+      script.id = `Microsoft_Omnichannel_LCWidget_${widgetNumber}`;
+      script.src = scriptUrl;
+      script.setAttribute('data-app-id', appId);
+      script.setAttribute('data-lcw-version', 'test');
+      script.setAttribute('data-org-id', orgId);
+      script.setAttribute('data-org-url', orgUrl);
+
+      // Add to document
+      document.body.appendChild(script);
+      loadedWidgets.add(widgetNumber);
+
+      console.log(`✅ Widget ${widgetNumber} loaded:`, { appId, orgId, orgUrl });
+      showWidgetStatus(`✅ Widget ${widgetNumber} loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
+    }
+
+    function removeWidget(widgetNumber) {
+      const scriptId = `Microsoft_Omnichannel_LCWidget_${widgetNumber}`;
+      const script = document.getElementById(scriptId);
+
+      if (script) {
+        script.remove();
+        loadedWidgets.delete(widgetNumber);
+        console.log(`🗑️ Widget ${widgetNumber} removed`);
+        showWidgetStatus(`🗑️ Widget ${widgetNumber} removed successfully`);
+
+        // Also try to remove the chat button if it exists
+        const chatButton = document.querySelector('.oc-lcw-chat-button');
+        if (chatButton) {
+          chatButton.remove();
+        }
+      } else {
+        showWidgetStatus(`⚠️ Widget ${widgetNumber} is not currently loaded`);
+      }
+    }
+
+    function showWidgetStatus(message) {
+      const statusDiv = document.getElementById('widget-status');
+      const statusText = document.getElementById('widget-status-text');
+      statusDiv.style.display = 'block';
+      statusText.textContent = message;
+
+      // Auto-hide after 5 seconds
+      setTimeout(() => {
+        statusDiv.style.display = 'none';
+      }, 5000);
+    }
+
+    // Auto-load Widget 1 on page load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        loadWidget(1);
+      }, 1000);
+    });
   </script>
 
-  <!-- Omnichannel Live Chat widget -->
-  <script
-    id="Microsoft_Omnichannel_LCWidget"
-    src="https://oc-cdn-ppe2.azureedge.net/livechatwidget/scripts/LiveChatBootstrapper.js"
-    data-app-id="1e27fef0-15f7-4202-bf85-f736d6c67735"
-    data-lcw-version="test"
-    data-org-id="1e9d7bbe-facf-f011-8537-000d3a59231e"
-    data-org-url="https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com">
-  </script>
+  <!-- Widgets will be loaded dynamically via the configuration section above -->
+  <!-- Static widget loading disabled - use the configuration section to load widgets dynamically -->
 
 </body>
 </html>
