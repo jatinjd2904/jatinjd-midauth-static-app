@@ -29,9 +29,9 @@
     };
 
     // Scopes for token request - Request token for this application
-    // Using .default scope to get a token with this app as the audience
+    // Using GUID-based identifier (required when app requests token for itself)
     const tokenRequest = {
-      scopes: ["api://b0565fdb-6754-40e3-9446-72afdf056f0b/.default"]
+      scopes: ["b0565fdb-6754-40e3-9446-72afdf056f0b/.default"]
     };
 
     // Initialize MSAL
