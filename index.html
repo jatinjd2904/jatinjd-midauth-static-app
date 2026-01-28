@@ -45,6 +45,12 @@
     <h3>Widget Status:</h3>
     <pre id="widget-status-text"></pre>
   </div>
+
+  <div style="background: #fff3cd; padding: 15px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+    <strong>Note:</strong> The Omnichannel widget is designed as a singleton. After removing a widget, you may need to <strong>refresh the page</strong> before loading a different widget to ensure clean initialization.
+    <br><br>
+    <button onclick="location.reload()" style="padding: 8px 16px; cursor: pointer;">🔄 Refresh Page</button>
+  </div>
   <hr style="margin: 30px 0;">
 
   <script>
@@ -289,6 +295,14 @@
         return;
       }
 
+      // Check if ANY widget is already loaded (since it's a singleton)
+      if (loadedWidgets.size > 0) {
+        const loadedWidget = Array.from(loadedWidgets)[0];
+        showWidgetStatus(`⚠️ Widget ${loadedWidget} is already active. Remove it first or refresh the page before loading Widget ${widgetNumber}.`);
+        console.warn(`⚠️ Cannot load Widget ${widgetNumber} - Widget ${loadedWidget} is still active`);
+        return;
+      }
+
       // Create script element - use standard ID for first widget, numbered for others
       const script = document.createElement('script');
       // LiveChatBootstrapper expects ID to be exactly "Microsoft_Omnichannel_LCWidget" for the primary widget
@@ -325,37 +339,52 @@
       const scriptId = widgetNumber === 1 ? 'Microsoft_Omnichannel_LCWidget' : `Microsoft_Omnichannel_LCWidget_${widgetNumber}`;
       const script = document.getElementById(scriptId);
 
+      console.log(`🗑️ Removing widget ${widgetNumber}...`);
+
+      // Remove all widget-related DOM elements (comprehensive cleanup)
+      let removedCount = 0;
+
+      // Remove all elements with oc-lcw class prefix
+      const ocElements = document.querySelectorAll('[class*="oc-lcw"], [id*="oc-lcw"]');
+      ocElements.forEach(el => {
+        el.remove();
+        removedCount++;
+      });
+      console.log(`🗑️ Removed ${removedCount} widget DOM elements`);
+
+      // Remove all Microsoft.Omnichannel related elements
+      const omnichannelElements = document.querySelectorAll('[class*="microsoft-omnichannel"], [id*="microsoft-omnichannel"]');
+      omnichannelElements.forEach(el => {
+        el.remove();
+      });
+
+      // Remove the script element
       if (script) {
         script.remove();
-        loadedWidgets.delete(widgetNumber);
         console.log(`🗑️ Widget ${widgetNumber} script removed`);
-
-        // Remove all widget-related DOM elements
-        const chatButton = document.querySelector('.oc-lcw-chat-button');
-        if (chatButton) {
-          chatButton.remove();
-          console.log('🗑️ Chat button removed');
-        }
-
-        // Remove chat iframe if it exists
-        const chatIframe = document.querySelector('iframe[id*="oc-lcw"]');
-        if (chatIframe) {
-          chatIframe.remove();
-          console.log('🗑️ Chat iframe removed');
-        }
-
-        // Remove minimized chat icon
-        const minimizedIcon = document.querySelector('.oc-lcw-minimized-icon');
-        if (minimizedIcon) {
-          minimizedIcon.remove();
-          console.log('🗑️ Minimized icon removed');
-        }
-
-        showWidgetStatus(`🗑️ Widget ${widgetNumber} removed successfully`);
-      } else {
-        showWidgetStatus(`⚠️ Widget ${widgetNumber} is not currently loaded`);
-        console.warn(`⚠️ Script element with ID "${scriptId}" not found`);
       }
+
+      // Clean up global window objects created by the widget
+      try {
+        if (window.Microsoft && window.Microsoft.Omnichannel) {
+          delete window.Microsoft.Omnichannel.LiveChatWidget;
+          console.log('🗑️ Cleaned up window.Microsoft.Omnichannel.LiveChatWidget');
+        }
+        if (window.Microsoft && window.Microsoft.Omnichannel && Object.keys(window.Microsoft.Omnichannel).length === 0) {
+          delete window.Microsoft.Omnichannel;
+          console.log('🗑️ Cleaned up window.Microsoft.Omnichannel');
+        }
+        if (window.Microsoft && Object.keys(window.Microsoft).length === 0) {
+          delete window.Microsoft;
+          console.log('🗑️ Cleaned up window.Microsoft');
+        }
+      } catch (e) {
+        console.warn('⚠️ Could not clean up global objects:', e);
+      }
+
+      loadedWidgets.delete(widgetNumber);
+      showWidgetStatus(`🗑️ Widget ${widgetNumber} removed successfully. Page may need refresh for clean reload.`);
+      console.log(`✅ Widget ${widgetNumber} cleanup complete`);
     }
 
     function showWidgetStatus(message) {
