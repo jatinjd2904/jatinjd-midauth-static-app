@@ -333,6 +333,46 @@
         console.log('Widget script removed');
       }
 
+      // Clean up localStorage (widget session data)
+      try {
+        const localStorageKeys = Object.keys(localStorage);
+        let localStorageCleanedCount = 0;
+        localStorageKeys.forEach(key => {
+          if (key.startsWith('oc-lcw-') ||
+              key.includes('Omnichannel') ||
+              key.includes('livechat') ||
+              key.includes('reconnectId') ||
+              key.includes('chatToken')) {
+            localStorage.removeItem(key);
+            localStorageCleanedCount++;
+            console.log('Removed localStorage key:', key);
+          }
+        });
+        console.log(`Cleaned up ${localStorageCleanedCount} localStorage items`);
+      } catch (e) {
+        console.warn('Could not clean up localStorage:', e);
+      }
+
+      // Clean up sessionStorage (widget session data)
+      try {
+        const sessionStorageKeys = Object.keys(sessionStorage);
+        let sessionStorageCleanedCount = 0;
+        sessionStorageKeys.forEach(key => {
+          if (key.startsWith('oc-lcw-') ||
+              key.includes('Omnichannel') ||
+              key.includes('livechat') ||
+              key.includes('reconnectId') ||
+              key.includes('chatToken')) {
+            sessionStorage.removeItem(key);
+            sessionStorageCleanedCount++;
+            console.log('Removed sessionStorage key:', key);
+          }
+        });
+        console.log(`Cleaned up ${sessionStorageCleanedCount} sessionStorage items`);
+      } catch (e) {
+        console.warn('Could not clean up sessionStorage:', e);
+      }
+
       // Clean up global window objects created by the widget
       try {
         if (window.Microsoft && window.Microsoft.Omnichannel) {
@@ -352,7 +392,7 @@
       }
 
       widgetLoaded = false;
-      showWidgetStatus('Widget removed successfully');
+      showWidgetStatus('Widget removed successfully. You can now load a different widget configuration.');
       console.log('Widget cleanup complete');
     }
 
