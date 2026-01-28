@@ -34,6 +34,7 @@
       <button type="button" onclick="loadWidget()">Load Widget</button>
       <button type="button" onclick="removeWidget()">Remove Widget</button>
       <button type="button" onclick="removeWidgetAndReload()">Remove Widget & Reload Page</button>
+      <button type="button" onclick="hardReload()" style="background-color: #ff9800; color: white;">Hard Reload (Clear All Cache)</button>
     </form>
   </div>
 
@@ -316,6 +317,21 @@
 
       console.log('Removing widget...');
 
+      // Remove all iframes (widget loads in iframe)
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        // Check if it's a widget iframe
+        if (iframe.src && (iframe.src.includes('omnichannelengagementhub') ||
+            iframe.src.includes('livechat') ||
+            iframe.src.includes('lcw') ||
+            iframe.id.includes('lcw') ||
+            iframe.className.includes('lcw'))) {
+          console.log('Removing widget iframe:', iframe.src);
+          iframe.remove();
+        }
+      });
+      console.log('All widget iframes removed');
+
       // Remove all widget-related DOM elements (comprehensive cleanup)
       let removedCount = 0;
 
@@ -412,6 +428,32 @@
       setTimeout(() => {
         console.log('Reloading page for complete cleanup');
         window.location.reload();
+      }, 500);
+    }
+
+    async function hardReload() {
+      console.log('Performing hard reload with cache clear...');
+
+      // Remove widget first
+      removeWidget();
+
+      // Clear all caches via Cache API (Service Worker caches)
+      if ('caches' in window) {
+        try {
+          const cacheNames = await caches.keys();
+          console.log('Clearing', cacheNames.length, 'cache(s):', cacheNames);
+          await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)));
+          console.log('All service worker caches cleared');
+        } catch (e) {
+          console.warn('Could not clear service worker caches:', e);
+        }
+      }
+
+      // Hard reload (bypass cache) after a short delay
+      setTimeout(() => {
+        console.log('Performing hard reload (Ctrl+Shift+R equivalent)');
+        // Force reload from server, bypassing cache
+        window.location.reload(true);
       }, 500);
     }
 
