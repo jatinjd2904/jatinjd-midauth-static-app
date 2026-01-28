@@ -22,7 +22,6 @@
       <label>Org ID: <input type="text" id="widget-orgId" value="1e9d7bbe-facf-f011-8537-000d3a59231e" style="width: 300px;"></label><br><br>
       <label>Org URL: <input type="text" id="widget-orgUrl" value="https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com" style="width: 500px;"></label><br><br>
       <label>Script URL: <input type="text" id="widget-scriptUrl" value="https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js" style="width: 500px;"></label><br><br>
-      <label>Portal Contact ID (Optional): <input type="text" id="widget-portalContactId" value="8ae5011b-7afc-f011-8406-7ced8d3c2d03" placeholder="Leave empty for anonymous chat" style="width: 300px;"></label><br><br>
       <button type="button" onclick="loadWidget()">Load Widget</button>
       <button type="button" onclick="removeWidget()">Remove Widget</button>
     </form>
@@ -43,9 +42,8 @@
       const orgId = document.getElementById('widget-orgId').value;
       const orgUrl = document.getElementById('widget-orgUrl').value;
       const scriptUrl = document.getElementById('widget-scriptUrl').value;
-      const portalContactId = document.getElementById('widget-portalContactId').value;
 
-      console.log('loadWidget() called with:', { appId, orgId, orgUrl, scriptUrl, portalContactId });
+      console.log('loadWidget() called with:', { appId, orgId, orgUrl, scriptUrl });
 
       // Validate inputs
       if (!appId || !orgId || !orgUrl || !scriptUrl) {
@@ -71,18 +69,12 @@
       script.setAttribute('data-org-id', orgId);
       script.setAttribute('data-org-url', orgUrl);
 
-      // Set portal contact ID if provided (for contact matching in unauthenticated chat)
-      if (portalContactId) {
-        script.setAttribute('data-portal-contact-id', portalContactId);
-      }
-
       console.log('Script element created with ID:', script.id);
       console.log('Data attributes set:', {
         'data-app-id': script.getAttribute('data-app-id'),
         'data-org-id': script.getAttribute('data-org-id'),
         'data-org-url': script.getAttribute('data-org-url'),
-        'data-lcw-version': script.getAttribute('data-lcw-version'),
-        'data-portal-contact-id': script.getAttribute('data-portal-contact-id') || 'not set'
+        'data-lcw-version': script.getAttribute('data-lcw-version')
       });
 
       // Set src LAST to trigger loading only after all attributes are set
@@ -93,8 +85,8 @@
       widgetLoaded = true;
 
       console.log('Widget script appended to document body');
-      console.log('Widget loaded:', { appId, orgId, orgUrl, portalContactId: portalContactId || 'anonymous' });
-      showWidgetStatus(`Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}\nPortal Contact ID: ${portalContactId || 'Anonymous'}`);
+      console.log('Widget loaded:', { appId, orgId, orgUrl });
+      showWidgetStatus(`Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
     }
 
     function removeWidget() {
@@ -176,9 +168,6 @@
       }
       if (urlParams.has('scriptUrl')) {
         document.getElementById('widget-scriptUrl').value = urlParams.get('scriptUrl');
-      }
-      if (urlParams.has('portalContactId')) {
-        document.getElementById('widget-portalContactId').value = urlParams.get('portalContactId');
       }
 
       // Auto-load parameter (default: true)
