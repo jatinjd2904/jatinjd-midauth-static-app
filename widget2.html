@@ -434,6 +434,16 @@
     async function hardReload() {
       console.log('Performing hard reload with cache clear...');
 
+      // Save current form values to localStorage before reload
+      const formData = {
+        appId: document.getElementById('widget-appId').value,
+        orgId: document.getElementById('widget-orgId').value,
+        orgUrl: document.getElementById('widget-orgUrl').value,
+        scriptUrl: document.getElementById('widget-scriptUrl').value
+      };
+      localStorage.setItem('widget-config-saved', JSON.stringify(formData));
+      console.log('Saved form values:', formData);
+
       // Remove widget first
       removeWidget();
 
@@ -469,8 +479,33 @@
       }, 5000);
     }
 
+    // Restore saved form values from localStorage (after hard reload)
+    function restoreSavedConfig() {
+      const savedConfig = localStorage.getItem('widget-config-saved');
+      if (savedConfig) {
+        try {
+          const formData = JSON.parse(savedConfig);
+          console.log('Restoring saved form values:', formData);
+
+          document.getElementById('widget-appId').value = formData.appId;
+          document.getElementById('widget-orgId').value = formData.orgId;
+          document.getElementById('widget-orgUrl').value = formData.orgUrl;
+          document.getElementById('widget-scriptUrl').value = formData.scriptUrl;
+
+          // Remove the saved config after restoring
+          localStorage.removeItem('widget-config-saved');
+          console.log('Form values restored and saved config removed');
+        } catch (e) {
+          console.error('Could not restore saved config:', e);
+        }
+      }
+    }
+
     // Parse URL parameters and populate widget configuration
     function loadConfigFromUrl() {
+      // First, restore any saved configuration from hard reload
+      restoreSavedConfig();
+
       const urlParams = new URLSearchParams(window.location.search);
 
       // Widget parameters
