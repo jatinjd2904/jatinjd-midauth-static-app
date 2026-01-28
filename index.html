@@ -28,9 +28,10 @@
       }
     };
 
-    // Scopes for token request
+    // Scopes for token request - Request token for this application
+    // Using .default scope to get a token with this app as the audience
     const tokenRequest = {
-      scopes: ["User.Read", "openid", "profile", "email"]
+      scopes: ["api://b0565fdb-6754-40e3-9446-72afdf056f0b/.default"]
     };
 
     // Initialize MSAL
