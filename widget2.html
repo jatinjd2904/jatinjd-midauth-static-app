@@ -2,13 +2,25 @@
 <html>
 <head>
   <title>Jatin UnAuth Widget Test</title>
+  <!-- MSAL.js library for optional user context detection -->
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 </head>
 <body>
   <h1>Jatin App - Unauthenticated Chat Widget</h1>
 
   <div style="background: #e3f2fd; padding: 15px; margin: 20px 0; border-left: 4px solid #2196f3;">
-    <strong>This page uses unauthenticated chat (no Azure AD login required).</strong>
-    <br>For authenticated chat with Azure AD, visit <a href="index.html" style="color: #0066cc; text-decoration: underline;">index.html</a>
+    <strong>This page uses unauthenticated chat (no token validation).</strong>
+    <br>If logged into Azure AD, your name will appear to the agent.
+    <br>For fully authenticated chat with token validation, visit <a href="index.html" style="color: #0066cc; text-decoration: underline;">index.html</a>
+  </div>
+
+  <!-- Optional Login Section -->
+  <div style="background: #fff3cd; padding: 15px; margin: 20px 0; border-left: 4px solid #ffc107;">
+    <strong>Optional:</strong> Sign in to pass your name to the agent (chat remains unauthenticated)
+    <br><br>
+    <button onclick="login()" id="loginBtn">Sign in with Azure AD</button>
+    <button onclick="logout()" id="logoutBtn" style="display:none;">Sign out</button>
+    <pre id="user" style="margin-top: 10px;"></pre>
   </div>
 
   <!-- Chat Widget Configuration Section -->
@@ -34,6 +46,142 @@
   <hr style="margin: 30px 0;">
 
   <script>
+    // MSAL Configuration for optional user context
+    const msalConfig = {
+      auth: {
+        clientId: "b0565fdb-6754-40e3-9446-72afdf056f0b",
+        authority: "https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47",
+        redirectUri: window.location.origin + "/widget2.html"
+      },
+      cache: {
+        cacheLocation: "localStorage",
+        storeAuthStateInCookie: false
+      }
+    };
+
+    const tokenRequest = {
+      scopes: ["User.Read"] // Only need basic profile info, not app-specific token
+    };
+
+    // Initialize MSAL
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+    // Store user info
+    let currentUser = null;
+
+    // Login function
+    async function login() {
+      try {
+        console.log('Initiating MSAL login redirect...');
+        await msalInstance.loginRedirect(tokenRequest);
+      } catch (error) {
+        console.error('Login failed:', error);
+        alert('Login failed: ' + error.message);
+      }
+    }
+
+    // Logout function
+    function logout() {
+      currentUser = null;
+      const logoutRequest = {
+        account: msalInstance.getAllAccounts()[0]
+      };
+      msalInstance.logoutRedirect(logoutRequest);
+    }
+
+    // Get user info from MSAL
+    async function getUserInfo() {
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length === 0) {
+        console.log('No user logged in');
+        return null;
+      }
+
+      const account = accounts[0];
+      console.log('User logged in:', account.name, account.username);
+
+      return {
+        name: account.name,
+        email: account.username
+      };
+    }
+
+    // Display user info
+    function displayUserInfo(account) {
+      const userInfo = {
+        name: account.name,
+        email: account.username
+      };
+
+      document.getElementById("user").innerHTML =
+        '<strong>Logged in as:</strong><br>' +
+        JSON.stringify(userInfo, null, 2);
+
+      document.getElementById('loginBtn').style.display = 'none';
+      document.getElementById('logoutBtn').style.display = 'inline-block';
+    }
+
+    // Set widget context with user info (NOT authentication token)
+    function setWidgetContext(userInfo) {
+      if (!userInfo) {
+        console.log('No user info to set as context');
+        return;
+      }
+
+      console.log('Setting widget context with user info:', userInfo);
+
+      // Wait for widget to be available
+      const checkWidget = setInterval(() => {
+        if (window.Microsoft && window.Microsoft.Omnichannel && window.Microsoft.Omnichannel.LiveChatWidget) {
+          clearInterval(checkWidget);
+
+          try {
+            // Set context provider - this passes user info to agent WITHOUT authentication
+            Microsoft.Omnichannel.LiveChatWidget.SDK.setContextProvider(function() {
+              return {
+                'Customer Name': { value: userInfo.name || 'Unknown', isDisplayable: true },
+                'Customer Email': { value: userInfo.email || 'Unknown', isDisplayable: true },
+                'Authentication': { value: 'Unauthenticated (Context Only)', isDisplayable: true }
+              };
+            });
+
+            console.log('Widget context set successfully');
+          } catch (error) {
+            console.error('Failed to set widget context:', error);
+          }
+        }
+      }, 500);
+
+      // Stop checking after 10 seconds
+      setTimeout(() => clearInterval(checkWidget), 10000);
+    }
+
+    // Check if user is already logged in on page load
+    msalInstance.handleRedirectPromise()
+      .then(async response => {
+        if (response) {
+          console.log('Login successful via redirect');
+          currentUser = {
+            name: response.account.name,
+            email: response.account.username
+          };
+          displayUserInfo(response.account);
+        } else {
+          const accounts = msalInstance.getAllAccounts();
+          if (accounts.length > 0) {
+            console.log('User already logged in');
+            currentUser = {
+              name: accounts[0].name,
+              email: accounts[0].username
+            };
+            displayUserInfo(accounts[0]);
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error handling redirect:', error);
+      });
+
     // Widget Management Functions
     let widgetLoaded = false;
 
@@ -87,6 +235,14 @@
       console.log('Widget script appended to document body');
       console.log('Widget loaded:', { appId, orgId, orgUrl });
       showWidgetStatus(`Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
+
+      // Set user context if user is logged in
+      if (currentUser) {
+        console.log('User is logged in, setting widget context...');
+        setWidgetContext(currentUser);
+      } else {
+        console.log('No user logged in, widget will be anonymous');
+      }
     }
 
     function removeWidget() {
