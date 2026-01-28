@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Jatin UnAuth Widget Test</title>
+</head>
+<body>
+  <h1>Jatin App - Unauthenticated Chat Widget</h1>
+
+  <div style="background: #e3f2fd; padding: 15px; margin: 20px 0; border-left: 4px solid #2196f3;">
+    <strong>ℹ️ This page uses unauthenticated chat (no Azure AD login required).</strong>
+    <br>For authenticated chat with Azure AD, visit <a href="index.html" style="color: #0066cc; text-decoration: underline;">index.html</a>
+  </div>
+
+  <!-- Chat Widget Configuration Section -->
+  <hr style="margin: 30px 0;">
+  <h2>Configure Chat Widget (UnAuth - No Authentication)</h2>
+
+  <div style="background: #f5f5f5; padding: 20px; margin-bottom: 20px;">
+    <h3>Widget Configuration</h3>
+    <form id="widget-config">
+      <label>App ID: <input type="text" id="widget-appId" value="50fbd2aa-1a19-475f-aeb6-59c8d15c8387" style="width: 300px;"></label><br><br>
+      <label>Org ID: <input type="text" id="widget-orgId" value="1e9d7bbe-facf-f011-8537-000d3a59231e" style="width: 300px;"></label><br><br>
+      <label>Org URL: <input type="text" id="widget-orgUrl" value="https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com" style="width: 500px;"></label><br><br>
+      <label>Script URL: <input type="text" id="widget-scriptUrl" value="https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js" style="width: 500px;"></label><br><br>
+      <button type="button" onclick="loadWidget()">Load Widget</button>
+      <button type="button" onclick="removeWidget()">Remove Widget</button>
+    </form>
+  </div>
+
+  <div id="widget-status" style="background: #e8f5e9; padding: 15px; margin-bottom: 20px; display: none;">
+    <h3>Widget Status:</h3>
+    <pre id="widget-status-text"></pre>
+  </div>
+  <hr style="margin: 30px 0;">
+
+  <script>
+    // Widget Management Functions
+    let widgetLoaded = false;
+
+    function loadWidget() {
+      const appId = document.getElementById('widget-appId').value;
+      const orgId = document.getElementById('widget-orgId').value;
+      const orgUrl = document.getElementById('widget-orgUrl').value;
+      const scriptUrl = document.getElementById('widget-scriptUrl').value;
+
+      console.log('🔍 loadWidget() called with:', { appId, orgId, orgUrl, scriptUrl });
+
+      // Validate inputs
+      if (!appId || !orgId || !orgUrl || !scriptUrl) {
+        showWidgetStatus('❌ All fields are required');
+        console.error('❌ Validation failed - missing required fields');
+        return;
+      }
+
+      // Check if already loaded
+      if (widgetLoaded) {
+        showWidgetStatus('⚠️ Widget is already loaded. Remove it first to reload.');
+        return;
+      }
+
+      // Create script element with standard ID
+      const script = document.createElement('script');
+      script.id = 'Microsoft_Omnichannel_LCWidget';
+
+      // IMPORTANT: Set all data attributes BEFORE setting src
+      // This ensures attributes are available when the script loads
+      script.setAttribute('data-app-id', appId);
+      script.setAttribute('data-lcw-version', 'test');
+      script.setAttribute('data-org-id', orgId);
+      script.setAttribute('data-org-url', orgUrl);
+
+      console.log('📝 Script element created with ID:', script.id);
+      console.log('📝 Data attributes set:', {
+        'data-app-id': script.getAttribute('data-app-id'),
+        'data-org-id': script.getAttribute('data-org-id'),
+        'data-org-url': script.getAttribute('data-org-url'),
+        'data-lcw-version': script.getAttribute('data-lcw-version')
+      });
+
+      // Set src LAST to trigger loading only after all attributes are set
+      script.src = scriptUrl;
+
+      // Add to document
+      document.body.appendChild(script);
+      widgetLoaded = true;
+
+      console.log('✅ Widget script appended to document body');
+      console.log('✅ Widget loaded:', { appId, orgId, orgUrl });
+      showWidgetStatus(`✅ Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
+    }
+
+    function removeWidget() {
+      const script = document.getElementById('Microsoft_Omnichannel_LCWidget');
+
+      console.log('🗑️ Removing widget...');
+
+      // Remove all widget-related DOM elements (comprehensive cleanup)
+      let removedCount = 0;
+
+      // Remove all elements with oc-lcw class prefix
+      const ocElements = document.querySelectorAll('[class*="oc-lcw"], [id*="oc-lcw"]');
+      ocElements.forEach(el => {
+        el.remove();
+        removedCount++;
+      });
+      console.log(`🗑️ Removed ${removedCount} widget DOM elements`);
+
+      // Remove all Microsoft.Omnichannel related elements
+      const omnichannelElements = document.querySelectorAll('[class*="microsoft-omnichannel"], [id*="microsoft-omnichannel"]');
+      omnichannelElements.forEach(el => {
+        el.remove();
+      });
+
+      // Remove the script element
+      if (script) {
+        script.remove();
+        console.log('🗑️ Widget script removed');
+      }
+
+      // Clean up global window objects created by the widget
+      try {
+        if (window.Microsoft && window.Microsoft.Omnichannel) {
+          delete window.Microsoft.Omnichannel.LiveChatWidget;
+          console.log('🗑️ Cleaned up window.Microsoft.Omnichannel.LiveChatWidget');
+        }
+        if (window.Microsoft && window.Microsoft.Omnichannel && Object.keys(window.Microsoft.Omnichannel).length === 0) {
+          delete window.Microsoft.Omnichannel;
+          console.log('🗑️ Cleaned up window.Microsoft.Omnichannel');
+        }
+        if (window.Microsoft && Object.keys(window.Microsoft).length === 0) {
+          delete window.Microsoft;
+          console.log('🗑️ Cleaned up window.Microsoft');
+        }
+      } catch (e) {
+        console.warn('⚠️ Could not clean up global objects:', e);
+      }
+
+      widgetLoaded = false;
+      showWidgetStatus('🗑️ Widget removed successfully');
+      console.log('✅ Widget cleanup complete');
+    }
+
+    function showWidgetStatus(message) {
+      const statusDiv = document.getElementById('widget-status');
+      const statusText = document.getElementById('widget-status-text');
+      statusDiv.style.display = 'block';
+      statusText.textContent = message;
+
+      // Auto-hide after 5 seconds
+      setTimeout(() => {
+        statusDiv.style.display = 'none';
+      }, 5000);
+    }
+
+    // Parse URL parameters and populate widget configuration
+    function loadConfigFromUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+
+      // Widget parameters
+      if (urlParams.has('appId')) {
+        document.getElementById('widget-appId').value = urlParams.get('appId');
+      }
+      if (urlParams.has('orgId')) {
+        document.getElementById('widget-orgId').value = urlParams.get('orgId');
+      }
+      if (urlParams.has('orgUrl')) {
+        document.getElementById('widget-orgUrl').value = urlParams.get('orgUrl');
+      }
+      if (urlParams.has('scriptUrl')) {
+        document.getElementById('widget-scriptUrl').value = urlParams.get('scriptUrl');
+      }
+
+      // Auto-load parameter (default: true)
+      const autoLoad = urlParams.get('autoLoad');
+      if (autoLoad !== 'false') {
+        setTimeout(() => {
+          loadWidget();
+        }, 1000);
+      }
+
+      console.log('📋 Configuration loaded from URL parameters');
+    }
+
+    // Auto-load widget on page load (unless autoLoad=false in URL)
+    window.addEventListener('load', () => {
+      loadConfigFromUrl();
+    });
+  </script>
+
+  <!-- Widget will be loaded dynamically via the configuration section above -->
+
+</body>
+</html>

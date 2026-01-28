@@ -16,40 +16,27 @@
 
   <!-- Chat Widget Configuration Section -->
   <hr style="margin: 30px 0;">
-  <h2>Configure Chat Widgets</h2>
-  <div style="background: #f5f5f5; padding: 20px; margin-bottom: 20px;">
-    <h3>Widget 1 (MidAuth Chat Widget)</h3>
-    <form id="widget1-config">
-      <label>App ID: <input type="text" id="widget1-appId" value="9c155eb8-61cc-41ff-9433-16355ce73ed2" style="width: 300px;"></label><br><br>
-      <label>Org ID: <input type="text" id="widget1-orgId" value="1e9d7bbe-facf-f011-8537-000d3a59231e" style="width: 300px;"></label><br><br>
-      <label>Org URL: <input type="text" id="widget1-orgUrl" value="https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com" style="width: 500px;"></label><br><br>
-      <label>Script URL: <input type="text" id="widget1-scriptUrl" value="https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js" style="width: 500px;"></label><br><br>
-      <button type="button" onclick="loadWidget(1)">Load Widget 1</button>
-      <button type="button" onclick="removeWidget(1)">Remove Widget 1</button>
-    </form>
+  <h2>Configure Chat Widget (MidAuth - Authenticated)</h2>
+
+  <div style="background: #fff3cd; padding: 15px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
+    <strong>Note:</strong> For unauthenticated chat, visit <a href="widget2.html" style="color: #0066cc; text-decoration: underline;">widget2.html</a>
   </div>
 
   <div style="background: #f5f5f5; padding: 20px; margin-bottom: 20px;">
-    <h3>Widget 2 (UnAuth Chat)</h3>
-    <form id="widget2-config">
-      <label>App ID: <input type="text" id="widget2-appId" value="50fbd2aa-1a19-475f-aeb6-59c8d15c8387" style="width: 300px;"></label><br><br>
-      <label>Org ID: <input type="text" id="widget2-orgId" value="1e9d7bbe-facf-f011-8537-000d3a59231e" style="width: 300px;"></label><br><br>
-      <label>Org URL: <input type="text" id="widget2-orgUrl" value="https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com" style="width: 500px;"></label><br><br>
-      <label>Script URL: <input type="text" id="widget2-scriptUrl" value="https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js" style="width: 500px;"></label><br><br>
-      <button type="button" onclick="loadWidget(2)">Load Widget 2</button>
-      <button type="button" onclick="removeWidget(2)">Remove Widget 2</button>
+    <h3>Widget Configuration</h3>
+    <form id="widget-config">
+      <label>App ID: <input type="text" id="widget-appId" value="9c155eb8-61cc-41ff-9433-16355ce73ed2" style="width: 300px;"></label><br><br>
+      <label>Org ID: <input type="text" id="widget-orgId" value="1e9d7bbe-facf-f011-8537-000d3a59231e" style="width: 300px;"></label><br><br>
+      <label>Org URL: <input type="text" id="widget-orgUrl" value="https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com" style="width: 500px;"></label><br><br>
+      <label>Script URL: <input type="text" id="widget-scriptUrl" value="https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js" style="width: 500px;"></label><br><br>
+      <button type="button" onclick="loadWidget()">Load Widget</button>
+      <button type="button" onclick="removeWidget()">Remove Widget</button>
     </form>
   </div>
 
   <div id="widget-status" style="background: #e8f5e9; padding: 15px; margin-bottom: 20px; display: none;">
     <h3>Widget Status:</h3>
     <pre id="widget-status-text"></pre>
-  </div>
-
-  <div style="background: #fff3cd; padding: 15px; margin-bottom: 20px; border-left: 4px solid #ffc107;">
-    <strong>Note:</strong> The Omnichannel widget is designed as a singleton. After removing a widget, you may need to <strong>refresh the page</strong> before loading a different widget to ensure clean initialization.
-    <br><br>
-    <button onclick="location.reload()" style="padding: 8px 16px; cursor: pointer;">🔄 Refresh Page</button>
   </div>
   <hr style="margin: 30px 0;">
 
@@ -272,41 +259,32 @@
       });
 
     // Widget Management Functions
-    const loadedWidgets = new Set();
+    let widgetLoaded = false;
 
-    function loadWidget(widgetNumber) {
-      const appId = document.getElementById(`widget${widgetNumber}-appId`).value;
-      const orgId = document.getElementById(`widget${widgetNumber}-orgId`).value;
-      const orgUrl = document.getElementById(`widget${widgetNumber}-orgUrl`).value;
-      const scriptUrl = document.getElementById(`widget${widgetNumber}-scriptUrl`).value;
+    function loadWidget() {
+      const appId = document.getElementById('widget-appId').value;
+      const orgId = document.getElementById('widget-orgId').value;
+      const orgUrl = document.getElementById('widget-orgUrl').value;
+      const scriptUrl = document.getElementById('widget-scriptUrl').value;
 
-      console.log(`🔍 loadWidget(${widgetNumber}) called with:`, { appId, orgId, orgUrl, scriptUrl });
+      console.log('🔍 loadWidget() called with:', { appId, orgId, orgUrl, scriptUrl });
 
       // Validate inputs
       if (!appId || !orgId || !orgUrl || !scriptUrl) {
-        showWidgetStatus(`❌ Widget ${widgetNumber}: All fields are required`);
-        console.error(`❌ Validation failed for widget ${widgetNumber}`);
+        showWidgetStatus('❌ All fields are required');
+        console.error('❌ Validation failed - missing required fields');
         return;
       }
 
       // Check if already loaded
-      if (loadedWidgets.has(widgetNumber)) {
-        showWidgetStatus(`⚠️ Widget ${widgetNumber} is already loaded. Remove it first to reload.`);
+      if (widgetLoaded) {
+        showWidgetStatus('⚠️ Widget is already loaded. Remove it first to reload.');
         return;
       }
 
-      // Check if ANY widget is already loaded (since it's a singleton)
-      if (loadedWidgets.size > 0) {
-        const loadedWidget = Array.from(loadedWidgets)[0];
-        showWidgetStatus(`⚠️ Widget ${loadedWidget} is already active. Remove it first or refresh the page before loading Widget ${widgetNumber}.`);
-        console.warn(`⚠️ Cannot load Widget ${widgetNumber} - Widget ${loadedWidget} is still active`);
-        return;
-      }
-
-      // Create script element - use standard ID for first widget, numbered for others
+      // Create script element with standard ID
       const script = document.createElement('script');
-      // LiveChatBootstrapper expects ID to be exactly "Microsoft_Omnichannel_LCWidget" for the primary widget
-      script.id = widgetNumber === 1 ? 'Microsoft_Omnichannel_LCWidget' : `Microsoft_Omnichannel_LCWidget_${widgetNumber}`;
+      script.id = 'Microsoft_Omnichannel_LCWidget';
 
       // IMPORTANT: Set all data attributes BEFORE setting src
       // This ensures attributes are available when the script loads
@@ -315,8 +293,8 @@
       script.setAttribute('data-org-id', orgId);
       script.setAttribute('data-org-url', orgUrl);
 
-      console.log(`📝 Script element created with ID: ${script.id}`);
-      console.log(`📝 Data attributes set:`, {
+      console.log('📝 Script element created with ID:', script.id);
+      console.log('📝 Data attributes set:', {
         'data-app-id': script.getAttribute('data-app-id'),
         'data-org-id': script.getAttribute('data-org-id'),
         'data-org-url': script.getAttribute('data-org-url'),
@@ -328,18 +306,17 @@
 
       // Add to document
       document.body.appendChild(script);
-      loadedWidgets.add(widgetNumber);
+      widgetLoaded = true;
 
-      console.log(`✅ Widget ${widgetNumber} script appended to document body`);
-      console.log(`✅ Widget ${widgetNumber} loaded:`, { appId, orgId, orgUrl });
-      showWidgetStatus(`✅ Widget ${widgetNumber} loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
+      console.log('✅ Widget script appended to document body');
+      console.log('✅ Widget loaded:', { appId, orgId, orgUrl });
+      showWidgetStatus(`✅ Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
     }
 
-    function removeWidget(widgetNumber) {
-      const scriptId = widgetNumber === 1 ? 'Microsoft_Omnichannel_LCWidget' : `Microsoft_Omnichannel_LCWidget_${widgetNumber}`;
-      const script = document.getElementById(scriptId);
+    function removeWidget() {
+      const script = document.getElementById('Microsoft_Omnichannel_LCWidget');
 
-      console.log(`🗑️ Removing widget ${widgetNumber}...`);
+      console.log('🗑️ Removing widget...');
 
       // Remove all widget-related DOM elements (comprehensive cleanup)
       let removedCount = 0;
@@ -361,7 +338,7 @@
       // Remove the script element
       if (script) {
         script.remove();
-        console.log(`🗑️ Widget ${widgetNumber} script removed`);
+        console.log('🗑️ Widget script removed');
       }
 
       // Clean up global window objects created by the widget
@@ -382,9 +359,9 @@
         console.warn('⚠️ Could not clean up global objects:', e);
       }
 
-      loadedWidgets.delete(widgetNumber);
-      showWidgetStatus(`🗑️ Widget ${widgetNumber} removed successfully. Page may need refresh for clean reload.`);
-      console.log(`✅ Widget ${widgetNumber} cleanup complete`);
+      widgetLoaded = false;
+      showWidgetStatus('🗑️ Widget removed successfully');
+      console.log('✅ Widget cleanup complete');
     }
 
     function showWidgetStatus(message) {
@@ -403,46 +380,32 @@
     function loadConfigFromUrl() {
       const urlParams = new URLSearchParams(window.location.search);
 
-      // Widget 1 parameters
-      if (urlParams.has('w1_appId')) {
-        document.getElementById('widget1-appId').value = urlParams.get('w1_appId');
+      // Widget parameters
+      if (urlParams.has('appId')) {
+        document.getElementById('widget-appId').value = urlParams.get('appId');
       }
-      if (urlParams.has('w1_orgId')) {
-        document.getElementById('widget1-orgId').value = urlParams.get('w1_orgId');
+      if (urlParams.has('orgId')) {
+        document.getElementById('widget-orgId').value = urlParams.get('orgId');
       }
-      if (urlParams.has('w1_orgUrl')) {
-        document.getElementById('widget1-orgUrl').value = urlParams.get('w1_orgUrl');
+      if (urlParams.has('orgUrl')) {
+        document.getElementById('widget-orgUrl').value = urlParams.get('orgUrl');
       }
-      if (urlParams.has('w1_scriptUrl')) {
-        document.getElementById('widget1-scriptUrl').value = urlParams.get('w1_scriptUrl');
-      }
-
-      // Widget 2 parameters
-      if (urlParams.has('w2_appId')) {
-        document.getElementById('widget2-appId').value = urlParams.get('w2_appId');
-      }
-      if (urlParams.has('w2_orgId')) {
-        document.getElementById('widget2-orgId').value = urlParams.get('w2_orgId');
-      }
-      if (urlParams.has('w2_orgUrl')) {
-        document.getElementById('widget2-orgUrl').value = urlParams.get('w2_orgUrl');
-      }
-      if (urlParams.has('w2_scriptUrl')) {
-        document.getElementById('widget2-scriptUrl').value = urlParams.get('w2_scriptUrl');
+      if (urlParams.has('scriptUrl')) {
+        document.getElementById('widget-scriptUrl').value = urlParams.get('scriptUrl');
       }
 
-      // Auto-load parameter (default: true for widget 1)
+      // Auto-load parameter (default: true)
       const autoLoad = urlParams.get('autoLoad');
       if (autoLoad !== 'false') {
         setTimeout(() => {
-          loadWidget(1);
+          loadWidget();
         }, 1000);
       }
 
       console.log('📋 Configuration loaded from URL parameters');
     }
 
-    // Auto-load Widget 1 on page load (unless autoLoad=false in URL)
+    // Auto-load widget on page load (unless autoLoad=false in URL)
     window.addEventListener('load', () => {
       loadConfigFromUrl();
     });
