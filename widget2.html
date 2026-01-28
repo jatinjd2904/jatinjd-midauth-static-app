@@ -121,33 +121,81 @@
       document.getElementById('logoutBtn').style.display = 'inline-block';
     }
 
-    // Set widget context with user info (NOT authentication token)
-    function setWidgetContext(userInfo) {
+    // Setup context provider globally BEFORE widget loads
+    // This is the Power Pages pattern - context must be available during widget initialization
+    function setupContextProvider() {
+      console.log('Setting up context provider for widget');
+
+      // Method 1: Direct window function (some widgets call this)
+      window.getOmnichannelContextProvider = function() {
+        console.log('Widget calling getOmnichannelContextProvider, currentUser:', currentUser);
+
+        if (currentUser && currentUser.name) {
+          return {
+            'Customer Name': { value: currentUser.name, isDisplayable: true },
+            'Customer Email': { value: currentUser.email || 'Unknown', isDisplayable: true },
+            'Logged In': { value: 'Yes (Context Only)', isDisplayable: true }
+          };
+        } else {
+          return {};
+        }
+      };
+
+      // Method 2: Listen for lcw:ready event and set context then
+      window.addEventListener('lcw:ready', function() {
+        console.log('Widget lcw:ready event fired');
+
+        if (window.Microsoft && window.Microsoft.Omnichannel &&
+            window.Microsoft.Omnichannel.LiveChatWidget &&
+            window.Microsoft.Omnichannel.LiveChatWidget.SDK) {
+
+          console.log('Setting context via SDK after lcw:ready');
+
+          Microsoft.Omnichannel.LiveChatWidget.SDK.setContextProvider(function() {
+            console.log('SDK Context provider called, currentUser:', currentUser);
+
+            if (currentUser && currentUser.name) {
+              return {
+                'Customer Name': { value: currentUser.name, isDisplayable: true },
+                'Customer Email': { value: currentUser.email || 'Unknown', isDisplayable: true }
+              };
+            }
+            return {};
+          });
+        }
+      });
+
+      console.log('Context provider function registered globally');
+    }
+
+    // Set widget context after widget loads (legacy approach as backup)
+    function setWidgetContextLegacy(userInfo) {
       if (!userInfo) {
-        console.log('No user info to set as context');
+        console.log('No user info for legacy context setting');
         return;
       }
 
-      console.log('Setting widget context with user info:', userInfo);
+      console.log('Attempting legacy context provider setup');
 
-      // Wait for widget to be available
+      // Wait for widget SDK to be available
       const checkWidget = setInterval(() => {
-        if (window.Microsoft && window.Microsoft.Omnichannel && window.Microsoft.Omnichannel.LiveChatWidget) {
+        if (window.Microsoft && window.Microsoft.Omnichannel && window.Microsoft.Omnichannel.LiveChatWidget &&
+            window.Microsoft.Omnichannel.LiveChatWidget.SDK) {
           clearInterval(checkWidget);
 
           try {
-            // Set context provider - this passes user info to agent WITHOUT authentication
+            // Set context provider using SDK method
             Microsoft.Omnichannel.LiveChatWidget.SDK.setContextProvider(function() {
+              console.log('Legacy context provider called');
               return {
                 'Customer Name': { value: userInfo.name || 'Unknown', isDisplayable: true },
-                'Customer Email': { value: userInfo.email || 'Unknown', isDisplayable: true },
-                'Authentication': { value: 'Unauthenticated (Context Only)', isDisplayable: true }
+                'Customer Email': { value: userInfo.email || 'Unknown', isDisplayable: true }
               };
             });
 
-            console.log('Widget context set successfully');
+            console.log('Legacy widget context set successfully');
           } catch (error) {
-            console.error('Failed to set widget context:', error);
+            console.error('Failed to set legacy widget context:', error);
           }
         }
       }, 500);
@@ -192,6 +240,7 @@
       const scriptUrl = document.getElementById('widget-scriptUrl').value;
 
       console.log('loadWidget() called with:', { appId, orgId, orgUrl, scriptUrl });
+      console.log('Current user state:', currentUser);
 
       // Validate inputs
       if (!appId || !orgId || !orgUrl || !scriptUrl) {
@@ -205,6 +254,10 @@
         showWidgetStatus('Widget is already loaded. Remove it first to reload.');
         return;
       }
+
+      // CRITICAL: Setup context provider BEFORE loading widget script
+      // This ensures context is available during widget initialization
+      setupContextProvider();
 
       // Create script element with standard ID
       const script = document.createElement('script');
@@ -236,10 +289,10 @@
       console.log('Widget loaded:', { appId, orgId, orgUrl });
       showWidgetStatus(`Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
 
-      // Set user context if user is logged in
+      // Also try legacy context provider method as backup
       if (currentUser) {
-        console.log('User is logged in, setting widget context...');
-        setWidgetContext(currentUser);
+        console.log('User is logged in, attempting legacy context setup...');
+        setWidgetContextLegacy(currentUser);
       } else {
         console.log('No user logged in, widget will be anonymous');
       }
@@ -325,6 +378,9 @@
       if (urlParams.has('scriptUrl')) {
         document.getElementById('widget-scriptUrl').value = urlParams.get('scriptUrl');
       }
+
+      // Setup context provider BEFORE auto-loading widget
+      setupContextProvider();
 
       // Auto-load parameter (default: true)
       const autoLoad = urlParams.get('autoLoad');
