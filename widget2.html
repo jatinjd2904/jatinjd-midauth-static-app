@@ -1,19 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Jatin UnAuth Widget Test</title>
+  <title>Jatin Mid-Auth Widget Test</title>
+  <!-- MSAL.js library -->
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 </head>
 <body>
-  <h1>Jatin App - Unauthenticated Chat Widget</h1>
+  <h1>Jatin App - Mid-Auth Chat Widget</h1>
+
+  <!-- Auth buttons -->
+  <button onclick="login()">Sign in with Azure AD</button>
+  <button onclick="logout()">Sign out</button>
+
+  <pre id="user"></pre>
 
   <div style="background: #e3f2fd; padding: 15px; margin: 20px 0; border-left: 4px solid #2196f3;">
-    <strong>This page uses unauthenticated chat (anonymous visitors).</strong>
-    <br>For authenticated chat with Azure AD, visit <a href="index.html" style="color: #0066cc; text-decoration: underline;">index.html</a>
+    <strong>This page supports both authenticated and unauthenticated chat.</strong>
+    <br>Sign in to chat as an authenticated user, or use anonymously without signing in.
+    <br>For fully authenticated chat only, visit <a href="index.html" style="color: #0066cc; text-decoration: underline;">index.html</a>
   </div>
 
   <!-- Chat Widget Configuration Section -->
   <hr style="margin: 30px 0;">
-  <h2>Configure Chat Widget (UnAuth - No Authentication)</h2>
+  <h2>Configure Chat Widget (Mid-Auth - Optional Authentication)</h2>
 
   <div style="background: #f5f5f5; padding: 20px; margin-bottom: 20px;">
     <h3>Widget Configuration</h3>
@@ -34,6 +43,213 @@
   <hr style="margin: 30px 0;">
 
   <script>
+    // MSAL Configuration
+    const msalConfig = {
+      auth: {
+        clientId: "b0565fdb-6754-40e3-9446-72afdf056f0b",
+        authority: "https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47",
+        redirectUri: window.location.origin + "/widget2.html"
+      },
+      cache: {
+        cacheLocation: "localStorage",
+        storeAuthStateInCookie: false
+      }
+    };
+
+    // Scopes for token request
+    const tokenRequest = {
+      scopes: ["b0565fdb-6754-40e3-9446-72afdf056f0b/.default"]
+    };
+
+    // Initialize MSAL
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+    // Store the access token and expiration time globally
+    let currentAccessToken = null;
+    let tokenExpiresOn = null;
+
+    // Check if token is expired or will expire soon (within 5 minutes)
+    function isTokenExpired() {
+      if (!tokenExpiresOn) return true;
+      const now = new Date();
+      const expiryTime = new Date(tokenExpiresOn);
+      const timeUntilExpiry = expiryTime - now;
+      const fiveMinutes = 5 * 60 * 1000;
+      return timeUntilExpiry < fiveMinutes;
+    }
+
+    // Refresh the access token
+    async function refreshToken() {
+      console.log('Refreshing access token...');
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length === 0) {
+        console.error('No accounts found for token refresh');
+        return null;
+      }
+
+      const request = {
+        ...tokenRequest,
+        account: accounts[0]
+      };
+
+      try {
+        const response = await msalInstance.acquireTokenSilent(request);
+        currentAccessToken = response.accessToken;
+        tokenExpiresOn = response.expiresOn;
+        console.log('Token refreshed successfully');
+        console.log('New token expires:', new Date(tokenExpiresOn));
+        return currentAccessToken;
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        await msalInstance.acquireTokenRedirect(request);
+        return null;
+      }
+    }
+
+    // Define window.auth.getAuthenticationToken for Omnichannel authenticated chat
+    window.auth = {};
+    window.auth.getAuthenticationToken = async function(callback) {
+      console.log('window.auth.getAuthenticationToken() called by Omnichannel widget');
+
+      try {
+        if (currentAccessToken && !isTokenExpired()) {
+          console.log('Returning cached AAD access token:', currentAccessToken);
+          callback(currentAccessToken);
+        } else if (currentAccessToken && isTokenExpired()) {
+          console.log('Token expired or expiring soon, refreshing...');
+          const newToken = await refreshToken();
+          if (newToken) {
+            callback(newToken);
+          } else {
+            console.error('Token refresh failed');
+            callback(null);
+          }
+        } else {
+          console.error('No access token available. User may not be logged in.');
+          callback(null);
+        }
+      } catch (error) {
+        console.error('Error in getAuthenticationToken:', error);
+        callback(null);
+      }
+    };
+
+    // Login function
+    async function login() {
+      try {
+        console.log('Initiating MSAL login redirect...');
+        await msalInstance.loginRedirect(tokenRequest);
+      } catch (error) {
+        console.error('Login failed:', error);
+        alert('Login failed: ' + error.message);
+      }
+    }
+
+    // Get access token
+    async function getToken() {
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length === 0) {
+        console.error('No accounts found');
+        return;
+      }
+
+      const request = {
+        ...tokenRequest,
+        account: accounts[0]
+      };
+
+      try {
+        const response = await msalInstance.acquireTokenSilent(request);
+        currentAccessToken = response.accessToken;
+        tokenExpiresOn = response.expiresOn;
+
+        console.log('AAD Access Token acquired:', currentAccessToken);
+        console.log('Token length:', currentAccessToken.length);
+        console.log('Token expires:', new Date(tokenExpiresOn));
+
+        displayUserInfo(response.account, currentAccessToken);
+
+        setTimeout(function() {
+          console.log('Testing window.auth.getAuthenticationToken...');
+          window.auth.getAuthenticationToken(function(token) {
+            if (token) {
+              console.log('Test successful - Token retrieved:', token);
+            } else {
+              console.error('Test failed: No token returned');
+            }
+          });
+        }, 500);
+
+      } catch (error) {
+        console.error('Silent token acquisition failed, using redirect:', error);
+        await msalInstance.acquireTokenRedirect(request);
+      }
+    }
+
+    // Display user info
+    function displayUserInfo(account, token) {
+      const userInfo = {
+        username: account.username,
+        name: account.name,
+        accountId: account.homeAccountId,
+        tenantId: account.tenantId
+      };
+
+      document.getElementById("user").innerHTML =
+        '<h3>User Info:</h3><pre style="background:#e8f5e9;padding:10px;">' +
+        JSON.stringify(userInfo, null, 2) +
+        '</pre>' +
+        '<h3>Access Token (Real AAD JWT):</h3><pre style="background:#f0f0f0;padding:10px;word-wrap:break-word;font-size:11px;">' +
+        token +
+        '</pre>';
+    }
+
+    // Logout function
+    function logout() {
+      currentAccessToken = null;
+      tokenExpiresOn = null;
+      document.getElementById("user").innerHTML = '';
+      const logoutRequest = {
+        account: msalInstance.getAllAccounts()[0]
+      };
+      msalInstance.logoutRedirect(logoutRequest);
+    }
+
+    // Check if user is already logged in on page load
+    msalInstance.handleRedirectPromise()
+      .then(response => {
+        if (response) {
+          console.log('Redirect response:', response);
+          console.log('Login successful via redirect');
+          currentAccessToken = response.accessToken;
+          tokenExpiresOn = response.expiresOn;
+          console.log('AAD Access Token acquired:', currentAccessToken);
+          console.log('Token length:', currentAccessToken.length);
+          console.log('Token expires:', new Date(tokenExpiresOn));
+          displayUserInfo(response.account, currentAccessToken);
+
+          setTimeout(function() {
+            console.log('Testing window.auth.getAuthenticationToken...');
+            window.auth.getAuthenticationToken(function(token) {
+              if (token) {
+                console.log('Test successful - Token retrieved:', token);
+              } else {
+                console.error('Test failed: No token returned');
+              }
+            });
+          }, 500);
+        } else {
+          const accounts = msalInstance.getAllAccounts();
+          if (accounts.length > 0) {
+            console.log('User already logged in');
+            getToken();
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error handling redirect:', error);
+      });
+
     // Widget Management Functions
     let widgetLoaded = false;
 
