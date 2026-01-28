@@ -7,7 +7,7 @@
   <h1>Jatin App - Unauthenticated Chat Widget</h1>
 
   <div style="background: #e3f2fd; padding: 15px; margin: 20px 0; border-left: 4px solid #2196f3;">
-    <strong>ℹ️ This page uses unauthenticated chat (no Azure AD login required).</strong>
+    <strong>This page uses unauthenticated chat (no Azure AD login required).</strong>
     <br>For authenticated chat with Azure AD, visit <a href="index.html" style="color: #0066cc; text-decoration: underline;">index.html</a>
   </div>
 
@@ -43,18 +43,18 @@
       const orgUrl = document.getElementById('widget-orgUrl').value;
       const scriptUrl = document.getElementById('widget-scriptUrl').value;
 
-      console.log('🔍 loadWidget() called with:', { appId, orgId, orgUrl, scriptUrl });
+      console.log('loadWidget() called with:', { appId, orgId, orgUrl, scriptUrl });
 
       // Validate inputs
       if (!appId || !orgId || !orgUrl || !scriptUrl) {
-        showWidgetStatus('❌ All fields are required');
-        console.error('❌ Validation failed - missing required fields');
+        showWidgetStatus('All fields are required');
+        console.error('Validation failed - missing required fields');
         return;
       }
 
       // Check if already loaded
       if (widgetLoaded) {
-        showWidgetStatus('⚠️ Widget is already loaded. Remove it first to reload.');
+        showWidgetStatus('Widget is already loaded. Remove it first to reload.');
         return;
       }
 
@@ -69,8 +69,8 @@
       script.setAttribute('data-org-id', orgId);
       script.setAttribute('data-org-url', orgUrl);
 
-      console.log('📝 Script element created with ID:', script.id);
-      console.log('📝 Data attributes set:', {
+      console.log('Script element created with ID:', script.id);
+      console.log('Data attributes set:', {
         'data-app-id': script.getAttribute('data-app-id'),
         'data-org-id': script.getAttribute('data-org-id'),
         'data-org-url': script.getAttribute('data-org-url'),
@@ -84,15 +84,15 @@
       document.body.appendChild(script);
       widgetLoaded = true;
 
-      console.log('✅ Widget script appended to document body');
-      console.log('✅ Widget loaded:', { appId, orgId, orgUrl });
-      showWidgetStatus(`✅ Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
+      console.log('Widget script appended to document body');
+      console.log('Widget loaded:', { appId, orgId, orgUrl });
+      showWidgetStatus(`Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
     }
 
     function removeWidget() {
       const script = document.getElementById('Microsoft_Omnichannel_LCWidget');
 
-      console.log('🗑️ Removing widget...');
+      console.log('Removing widget...');
 
       // Remove all widget-related DOM elements (comprehensive cleanup)
       let removedCount = 0;
@@ -103,7 +103,7 @@
         el.remove();
         removedCount++;
       });
-      console.log(`🗑️ Removed ${removedCount} widget DOM elements`);
+      console.log(`Removed ${removedCount} widget DOM elements`);
 
       // Remove all Microsoft.Omnichannel related elements
       const omnichannelElements = document.querySelectorAll('[class*="microsoft-omnichannel"], [id*="microsoft-omnichannel"]');
@@ -114,30 +114,30 @@
       // Remove the script element
       if (script) {
         script.remove();
-        console.log('🗑️ Widget script removed');
+        console.log('Widget script removed');
       }
 
       // Clean up global window objects created by the widget
       try {
         if (window.Microsoft && window.Microsoft.Omnichannel) {
           delete window.Microsoft.Omnichannel.LiveChatWidget;
-          console.log('🗑️ Cleaned up window.Microsoft.Omnichannel.LiveChatWidget');
+          console.log('Cleaned up window.Microsoft.Omnichannel.LiveChatWidget');
         }
         if (window.Microsoft && window.Microsoft.Omnichannel && Object.keys(window.Microsoft.Omnichannel).length === 0) {
           delete window.Microsoft.Omnichannel;
-          console.log('🗑️ Cleaned up window.Microsoft.Omnichannel');
+          console.log('Cleaned up window.Microsoft.Omnichannel');
         }
         if (window.Microsoft && Object.keys(window.Microsoft).length === 0) {
           delete window.Microsoft;
-          console.log('🗑️ Cleaned up window.Microsoft');
+          console.log('Cleaned up window.Microsoft');
         }
       } catch (e) {
-        console.warn('⚠️ Could not clean up global objects:', e);
+        console.warn('Could not clean up global objects:', e);
       }
 
       widgetLoaded = false;
-      showWidgetStatus('🗑️ Widget removed successfully');
-      console.log('✅ Widget cleanup complete');
+      showWidgetStatus('Widget removed successfully');
+      console.log('Widget cleanup complete');
     }
 
     function showWidgetStatus(message) {
@@ -178,7 +178,7 @@
         }, 1000);
       }
 
-      console.log('📋 Configuration loaded from URL parameters');
+      console.log('Configuration loaded from URL parameters');
     }
 
     // Auto-load widget on page load (unless autoLoad=false in URL)

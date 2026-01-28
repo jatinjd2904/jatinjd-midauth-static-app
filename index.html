@@ -79,7 +79,7 @@
 
     // Refresh the access token
     async function refreshToken() {
-      console.log('🔄 Refreshing access token...');
+      console.log('Refreshing access token...');
       const accounts = msalInstance.getAllAccounts();
       if (accounts.length === 0) {
         console.error('No accounts found for token refresh');
@@ -95,7 +95,7 @@
         const response = await msalInstance.acquireTokenSilent(request);
         currentAccessToken = response.accessToken;
         tokenExpiresOn = response.expiresOn;
-        console.log('✅ Token refreshed successfully');
+        console.log('Token refreshed successfully');
         console.log('New token expires:', new Date(tokenExpiresOn));
         return currentAccessToken;
       } catch (error) {
@@ -114,20 +114,20 @@
       try {
         // Check if token exists and is valid
         if (currentAccessToken && !isTokenExpired()) {
-          console.log('✅ Returning cached AAD access token:', currentAccessToken);
+          console.log('Returning cached AAD access token:', currentAccessToken);
           callback(currentAccessToken);
         } else if (currentAccessToken && isTokenExpired()) {
           // Token exists but is expired or expiring soon - refresh it
-          console.log('⚠️ Token expired or expiring soon, refreshing...');
+          console.log('Token expired or expiring soon, refreshing...');
           const newToken = await refreshToken();
           if (newToken) {
             callback(newToken);
           } else {
-            console.error('❌ Token refresh failed');
+            console.error('Token refresh failed');
             callback(null);
           }
         } else {
-          console.error('❌ No access token available. User may not be logged in.');
+          console.error('No access token available. User may not be logged in.');
           callback(null);
         }
       } catch (error) {
@@ -166,7 +166,7 @@
         currentAccessToken = response.accessToken;
         tokenExpiresOn = response.expiresOn;
 
-        console.log('✅ AAD Access Token acquired:', currentAccessToken);
+        console.log('AAD Access Token acquired:', currentAccessToken);
         console.log('Token length:', currentAccessToken.length);
         console.log('Token expires:', new Date(tokenExpiresOn));
 
@@ -178,9 +178,9 @@
           console.log('Testing window.auth.getAuthenticationToken...');
           window.auth.getAuthenticationToken(function(token) {
             if (token) {
-              console.log('✅ Test successful - Token retrieved:', token);
+              console.log('Test successful - Token retrieved:', token);
             } else {
-              console.error('❌ Test failed: No token returned');
+              console.error('Test failed: No token returned');
             }
           });
         }, 500);
@@ -230,7 +230,7 @@
           // Token is in the response
           currentAccessToken = response.accessToken;
           tokenExpiresOn = response.expiresOn;
-          console.log('✅ AAD Access Token acquired:', currentAccessToken);
+          console.log('AAD Access Token acquired:', currentAccessToken);
           console.log('Token length:', currentAccessToken.length);
           console.log('Token expires:', new Date(tokenExpiresOn));
           displayUserInfo(response.account, currentAccessToken);
@@ -240,9 +240,9 @@
             console.log('Testing window.auth.getAuthenticationToken...');
             window.auth.getAuthenticationToken(function(token) {
               if (token) {
-                console.log('✅ Test successful - Token retrieved:', token);
+                console.log('Test successful - Token retrieved:', token);
               } else {
-                console.error('❌ Test failed: No token returned');
+                console.error('Test failed: No token returned');
               }
             });
           }, 500);
@@ -267,18 +267,18 @@
       const orgUrl = document.getElementById('widget-orgUrl').value;
       const scriptUrl = document.getElementById('widget-scriptUrl').value;
 
-      console.log('🔍 loadWidget() called with:', { appId, orgId, orgUrl, scriptUrl });
+      console.log('loadWidget() called with:', { appId, orgId, orgUrl, scriptUrl });
 
       // Validate inputs
       if (!appId || !orgId || !orgUrl || !scriptUrl) {
-        showWidgetStatus('❌ All fields are required');
-        console.error('❌ Validation failed - missing required fields');
+        showWidgetStatus('All fields are required');
+        console.error('Validation failed - missing required fields');
         return;
       }
 
       // Check if already loaded
       if (widgetLoaded) {
-        showWidgetStatus('⚠️ Widget is already loaded. Remove it first to reload.');
+        showWidgetStatus('Widget is already loaded. Remove it first to reload.');
         return;
       }
 
@@ -293,8 +293,8 @@
       script.setAttribute('data-org-id', orgId);
       script.setAttribute('data-org-url', orgUrl);
 
-      console.log('📝 Script element created with ID:', script.id);
-      console.log('📝 Data attributes set:', {
+      console.log('Script element created with ID:', script.id);
+      console.log('Data attributes set:', {
         'data-app-id': script.getAttribute('data-app-id'),
         'data-org-id': script.getAttribute('data-org-id'),
         'data-org-url': script.getAttribute('data-org-url'),
@@ -308,15 +308,15 @@
       document.body.appendChild(script);
       widgetLoaded = true;
 
-      console.log('✅ Widget script appended to document body');
-      console.log('✅ Widget loaded:', { appId, orgId, orgUrl });
-      showWidgetStatus(`✅ Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
+      console.log('Widget script appended to document body');
+      console.log('Widget loaded:', { appId, orgId, orgUrl });
+      showWidgetStatus(`Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
     }
 
     function removeWidget() {
       const script = document.getElementById('Microsoft_Omnichannel_LCWidget');
 
-      console.log('🗑️ Removing widget...');
+      console.log('Removing widget...');
 
       // Remove all widget-related DOM elements (comprehensive cleanup)
       let removedCount = 0;
@@ -327,7 +327,7 @@
         el.remove();
         removedCount++;
       });
-      console.log(`🗑️ Removed ${removedCount} widget DOM elements`);
+      console.log(`Removed ${removedCount} widget DOM elements`);
 
       // Remove all Microsoft.Omnichannel related elements
       const omnichannelElements = document.querySelectorAll('[class*="microsoft-omnichannel"], [id*="microsoft-omnichannel"]');
@@ -338,30 +338,30 @@
       // Remove the script element
       if (script) {
         script.remove();
-        console.log('🗑️ Widget script removed');
+        console.log('Widget script removed');
       }
 
       // Clean up global window objects created by the widget
       try {
         if (window.Microsoft && window.Microsoft.Omnichannel) {
           delete window.Microsoft.Omnichannel.LiveChatWidget;
-          console.log('🗑️ Cleaned up window.Microsoft.Omnichannel.LiveChatWidget');
+          console.log('Cleaned up window.Microsoft.Omnichannel.LiveChatWidget');
         }
         if (window.Microsoft && window.Microsoft.Omnichannel && Object.keys(window.Microsoft.Omnichannel).length === 0) {
           delete window.Microsoft.Omnichannel;
-          console.log('🗑️ Cleaned up window.Microsoft.Omnichannel');
+          console.log('Cleaned up window.Microsoft.Omnichannel');
         }
         if (window.Microsoft && Object.keys(window.Microsoft).length === 0) {
           delete window.Microsoft;
-          console.log('🗑️ Cleaned up window.Microsoft');
+          console.log('Cleaned up window.Microsoft');
         }
       } catch (e) {
-        console.warn('⚠️ Could not clean up global objects:', e);
+        console.warn('Could not clean up global objects:', e);
       }
 
       widgetLoaded = false;
-      showWidgetStatus('🗑️ Widget removed successfully');
-      console.log('✅ Widget cleanup complete');
+      showWidgetStatus('Widget removed successfully');
+      console.log('Widget cleanup complete');
     }
 
     function showWidgetStatus(message) {
@@ -402,7 +402,7 @@
         }, 1000);
       }
 
-      console.log('📋 Configuration loaded from URL parameters');
+      console.log('Configuration loaded from URL parameters');
     }
 
     // Auto-load widget on page load (unless autoLoad=false in URL)
