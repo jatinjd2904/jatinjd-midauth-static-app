@@ -274,9 +274,12 @@
       const orgUrl = document.getElementById(`widget${widgetNumber}-orgUrl`).value;
       const scriptUrl = document.getElementById(`widget${widgetNumber}-scriptUrl`).value;
 
+      console.log(`🔍 loadWidget(${widgetNumber}) called with:`, { appId, orgId, orgUrl, scriptUrl });
+
       // Validate inputs
       if (!appId || !orgId || !orgUrl || !scriptUrl) {
         showWidgetStatus(`❌ Widget ${widgetNumber}: All fields are required`);
+        console.error(`❌ Validation failed for widget ${widgetNumber}`);
         return;
       }
 
@@ -286,40 +289,72 @@
         return;
       }
 
-      // Create script element with unique ID
+      // Create script element - use standard ID for first widget, numbered for others
       const script = document.createElement('script');
-      script.id = `Microsoft_Omnichannel_LCWidget_${widgetNumber}`;
-      script.src = scriptUrl;
+      // LiveChatBootstrapper expects ID to be exactly "Microsoft_Omnichannel_LCWidget" for the primary widget
+      script.id = widgetNumber === 1 ? 'Microsoft_Omnichannel_LCWidget' : `Microsoft_Omnichannel_LCWidget_${widgetNumber}`;
+
+      // IMPORTANT: Set all data attributes BEFORE setting src
+      // This ensures attributes are available when the script loads
       script.setAttribute('data-app-id', appId);
       script.setAttribute('data-lcw-version', 'test');
       script.setAttribute('data-org-id', orgId);
       script.setAttribute('data-org-url', orgUrl);
 
+      console.log(`📝 Script element created with ID: ${script.id}`);
+      console.log(`📝 Data attributes set:`, {
+        'data-app-id': script.getAttribute('data-app-id'),
+        'data-org-id': script.getAttribute('data-org-id'),
+        'data-org-url': script.getAttribute('data-org-url'),
+        'data-lcw-version': script.getAttribute('data-lcw-version')
+      });
+
+      // Set src LAST to trigger loading only after all attributes are set
+      script.src = scriptUrl;
+
       // Add to document
       document.body.appendChild(script);
       loadedWidgets.add(widgetNumber);
 
+      console.log(`✅ Widget ${widgetNumber} script appended to document body`);
       console.log(`✅ Widget ${widgetNumber} loaded:`, { appId, orgId, orgUrl });
       showWidgetStatus(`✅ Widget ${widgetNumber} loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
     }
 
     function removeWidget(widgetNumber) {
-      const scriptId = `Microsoft_Omnichannel_LCWidget_${widgetNumber}`;
+      const scriptId = widgetNumber === 1 ? 'Microsoft_Omnichannel_LCWidget' : `Microsoft_Omnichannel_LCWidget_${widgetNumber}`;
       const script = document.getElementById(scriptId);
 
       if (script) {
         script.remove();
         loadedWidgets.delete(widgetNumber);
-        console.log(`🗑️ Widget ${widgetNumber} removed`);
-        showWidgetStatus(`🗑️ Widget ${widgetNumber} removed successfully`);
+        console.log(`🗑️ Widget ${widgetNumber} script removed`);
 
-        // Also try to remove the chat button if it exists
+        // Remove all widget-related DOM elements
         const chatButton = document.querySelector('.oc-lcw-chat-button');
         if (chatButton) {
           chatButton.remove();
+          console.log('🗑️ Chat button removed');
         }
+
+        // Remove chat iframe if it exists
+        const chatIframe = document.querySelector('iframe[id*="oc-lcw"]');
+        if (chatIframe) {
+          chatIframe.remove();
+          console.log('🗑️ Chat iframe removed');
+        }
+
+        // Remove minimized chat icon
+        const minimizedIcon = document.querySelector('.oc-lcw-minimized-icon');
+        if (minimizedIcon) {
+          minimizedIcon.remove();
+          console.log('🗑️ Minimized icon removed');
+        }
+
+        showWidgetStatus(`🗑️ Widget ${widgetNumber} removed successfully`);
       } else {
         showWidgetStatus(`⚠️ Widget ${widgetNumber} is not currently loaded`);
+        console.warn(`⚠️ Script element with ID "${scriptId}" not found`);
       }
     }
 
@@ -335,11 +370,52 @@
       }, 5000);
     }
 
-    // Auto-load Widget 1 on page load
+    // Parse URL parameters and populate widget configuration
+    function loadConfigFromUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+
+      // Widget 1 parameters
+      if (urlParams.has('w1_appId')) {
+        document.getElementById('widget1-appId').value = urlParams.get('w1_appId');
+      }
+      if (urlParams.has('w1_orgId')) {
+        document.getElementById('widget1-orgId').value = urlParams.get('w1_orgId');
+      }
+      if (urlParams.has('w1_orgUrl')) {
+        document.getElementById('widget1-orgUrl').value = urlParams.get('w1_orgUrl');
+      }
+      if (urlParams.has('w1_scriptUrl')) {
+        document.getElementById('widget1-scriptUrl').value = urlParams.get('w1_scriptUrl');
+      }
+
+      // Widget 2 parameters
+      if (urlParams.has('w2_appId')) {
+        document.getElementById('widget2-appId').value = urlParams.get('w2_appId');
+      }
+      if (urlParams.has('w2_orgId')) {
+        document.getElementById('widget2-orgId').value = urlParams.get('w2_orgId');
+      }
+      if (urlParams.has('w2_orgUrl')) {
+        document.getElementById('widget2-orgUrl').value = urlParams.get('w2_orgUrl');
+      }
+      if (urlParams.has('w2_scriptUrl')) {
+        document.getElementById('widget2-scriptUrl').value = urlParams.get('w2_scriptUrl');
+      }
+
+      // Auto-load parameter (default: true for widget 1)
+      const autoLoad = urlParams.get('autoLoad');
+      if (autoLoad !== 'false') {
+        setTimeout(() => {
+          loadWidget(1);
+        }, 1000);
+      }
+
+      console.log('📋 Configuration loaded from URL parameters');
+    }
+
+    // Auto-load Widget 1 on page load (unless autoLoad=false in URL)
     window.addEventListener('load', () => {
-      setTimeout(() => {
-        loadWidget(1);
-      }, 1000);
+      loadConfigFromUrl();
     });
   </script>
 
