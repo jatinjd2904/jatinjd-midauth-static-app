@@ -33,8 +33,7 @@
       <label>Script URL: <input type="text" id="widget-scriptUrl" value="https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js" style="width: 500px;"></label><br><br>
       <button type="button" onclick="loadWidget()">Load Widget</button>
       <button type="button" onclick="removeWidget()">Remove Widget</button>
-      <button type="button" onclick="removeWidgetAndReload()">Remove Widget & Reload Page</button>
-      <button type="button" onclick="hardReload()" style="background-color: #ff9800; color: white;">Hard Reload (Clear All Cache)</button>
+      <button type="button" onclick="hardReload()" style="background-color: #ff9800; color: white;">Remove & Clear All Cache</button>
     </form>
   </div>
 
@@ -136,6 +135,39 @@
       }
     };
 
+    // Function to send mid-auth token to widget (can be called manually)
+    function sendMidAuthToken() {
+      if (!widgetLoaded) {
+        console.warn('Widget is not loaded yet');
+        return false;
+      }
+
+      if (!currentAccessToken || isTokenExpired()) {
+        console.warn('No valid access token available');
+        return false;
+      }
+
+      try {
+        if (window.Microsoft && window.Microsoft.Omnichannel &&
+            window.Microsoft.Omnichannel.LiveChatWidget &&
+            window.Microsoft.Omnichannel.LiveChatWidget.SDK) {
+
+          console.log('Calling Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken()');
+          console.log('Token (first 50 chars):', currentAccessToken.substring(0, 50) + '...');
+          window.Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken(currentAccessToken);
+          console.log('Mid-auth token set successfully');
+          return true;
+
+        } else {
+          console.error('LiveChatWidget SDK not available');
+          return false;
+        }
+      } catch (error) {
+        console.error('Error setting mid-auth token:', error);
+        return false;
+      }
+    }
+
     // Login function
     async function login() {
       try {
@@ -180,6 +212,14 @@
               console.error('Test failed: No token returned');
             }
           });
+
+          // Send mid-auth token to widget if it's already loaded
+          if (widgetLoaded) {
+            console.log('Widget is already loaded - sending mid-auth token');
+            sendMidAuthToken();
+          } else {
+            console.log('Widget not loaded yet - token will be sent when widget loads');
+          }
         }, 500);
 
       } catch (error) {
@@ -239,6 +279,14 @@
                 console.error('Test failed: No token returned');
               }
             });
+
+            // Send mid-auth token to widget if it's already loaded
+            if (widgetLoaded) {
+              console.log('Widget is already loaded - sending mid-auth token');
+              sendMidAuthToken();
+            } else {
+              console.log('Widget not loaded yet - token will be sent when widget loads');
+            }
           }, 500);
         } else {
           const accounts = msalInstance.getAllAccounts();
@@ -310,6 +358,28 @@
       console.log('Widget script appended to document body');
       console.log('Widget loaded:', { appId, orgId, orgUrl });
       showWidgetStatus(`Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
+
+      // Set up lcw:ready event listener for mid-auth token passing
+      setupMidAuthTokenListener();
+    }
+
+    // Set up listener for lcw:ready event to pass mid-auth token
+    function setupMidAuthTokenListener() {
+      console.log('Setting up lcw:ready event listener for mid-auth token...');
+
+      window.addEventListener('lcw:ready', function() {
+        console.log('lcw:ready event received - widget is ready');
+
+        // Send token if user is authenticated
+        if (currentAccessToken && !isTokenExpired()) {
+          console.log('User is authenticated - sending token via setMidAuthToken');
+          sendMidAuthToken();
+        } else {
+          console.log('User is not authenticated - widget will operate in unauthenticated mode');
+        }
+      });
+
+      console.log('lcw:ready event listener registered');
     }
 
     function removeWidget() {
@@ -416,19 +486,6 @@
       widgetLoaded = false;
       showWidgetStatus('Widget removed successfully. You can now load a different widget configuration.');
       console.log('Widget cleanup complete');
-    }
-
-    function removeWidgetAndReload() {
-      console.log('Removing widget and reloading page...');
-
-      // Call the remove function to clean up
-      removeWidget();
-
-      // Reload page after a short delay to ensure cleanup completes
-      setTimeout(() => {
-        console.log('Reloading page for complete cleanup');
-        window.location.reload();
-      }, 500);
     }
 
     async function hardReload() {
