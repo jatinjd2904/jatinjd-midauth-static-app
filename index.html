@@ -419,43 +419,36 @@
       window.addEventListener('lcw:ready', function() {
         console.log('[MidAuth] lcw:ready event received - widget is ready');
 
-        // Don't send token immediately on lcw:ready
-        // Wait for chat to be restored from cache (if it exists)
-        // Widget will broadcast ChatRetrievedFromCache if there's cached chat
-      });
+        // ⚠️ SIMPLIFIED APPROACH: Wait for widget to restore chat, then send token
+        // The widget restores chat from cache automatically when it loads
+        // We give it 3 seconds to complete restoration
+        if (pendingMidAuthToken && !isTokenExpired()) {
+          console.log('[MidAuth] Pending token detected - waiting for chat restoration...');
 
-      // ⚠️ KEY FIX: Listen for chat restoration from cache
-      // This event is broadcast by the widget when it restores liveChatContext
-      window.addEventListener('message', function(event) {
-        if (event.data && event.data.eventName === 'ChatRetrievedFromCache') {
-          console.log('[MidAuth] *** CHAT RESTORED FROM CACHE ***');
-          console.log('[MidAuth] Chat details:', {
-            chatId: event.data.payload?.chatId,
-            requestId: event.data.payload?.requestId
-          });
+          setTimeout(() => {
+            console.log('[MidAuth] Sending pending token after restoration delay...');
+            const success = sendMidAuthToken();
 
-          chatRestored = true;
+            if (success) {
+              console.log('[MidAuth] ✅ Token sent - should trigger mid-auth!');
+              alert('✅ Authentication successful! Your chat is now authenticated.');
+              chatRestored = true;
+            } else {
+              console.error('[MidAuth] ❌ Failed to send token');
+            }
+          }, 3000); // 3 second delay for chat restoration
+        } else if (currentAccessToken && !isTokenExpired()) {
+          // Fallback: user was already logged in when widget loaded
+          console.log('[MidAuth] User already logged in - setting up token for existing chat');
+          pendingMidAuthToken = currentAccessToken;
 
-          // Now send the token if we have one pending
-          if (pendingMidAuthToken && !isTokenExpired()) {
-            console.log('[MidAuth] Sending pending token to restored chat...');
-            setTimeout(() => {
-              const success = sendMidAuthToken();
-              if (success) {
-                console.log('[MidAuth] ✅ Token sent to restored chat - should trigger mid-auth!');
-                alert('✅ Authentication successful! Your chat is now authenticated.');
-              } else {
-                console.error('[MidAuth] ❌ Failed to send token to restored chat');
-              }
-            }, 1000); // 1 second delay to ensure chat is fully ready
-          } else if (currentAccessToken && !isTokenExpired()) {
-            // Fallback: use current token if no pending token
-            console.log('[MidAuth] Using current token for restored chat');
-            pendingMidAuthToken = currentAccessToken;
-            setTimeout(() => sendMidAuthToken(), 1000);
-          } else {
-            console.log('[MidAuth] No valid token available for restored chat');
-          }
+          setTimeout(() => {
+            console.log('[MidAuth] Sending token for existing authenticated user...');
+            sendMidAuthToken();
+            chatRestored = true;
+          }, 3000);
+        } else {
+          console.log('[MidAuth] No valid token available');
         }
       });
 
