@@ -536,26 +536,71 @@
       }, 5000);
     }
 
-    // Restore saved form values from localStorage (after hard reload)
+    // Save current form values to localStorage (for page refresh persistence)
+    function saveCurrentFormValues() {
+      const formData = {
+        appId: document.getElementById('widget-appId').value,
+        orgId: document.getElementById('widget-orgId').value,
+        orgUrl: document.getElementById('widget-orgUrl').value,
+        scriptUrl: document.getElementById('widget-scriptUrl').value
+      };
+      localStorage.setItem('widget-config-current', JSON.stringify(formData));
+      console.log('Form values saved to localStorage');
+    }
+
+    // Restore saved form values from localStorage (on page load)
     function restoreSavedConfig() {
-      const savedConfig = localStorage.getItem('widget-config-saved');
-      if (savedConfig) {
+      // First check for hard reload saved config (one-time use)
+      const hardReloadConfig = localStorage.getItem('widget-config-saved');
+      if (hardReloadConfig) {
         try {
-          const formData = JSON.parse(savedConfig);
-          console.log('Restoring saved form values:', formData);
+          const formData = JSON.parse(hardReloadConfig);
+          console.log('Restoring form values from hard reload:', formData);
 
           document.getElementById('widget-appId').value = formData.appId;
           document.getElementById('widget-orgId').value = formData.orgId;
           document.getElementById('widget-orgUrl').value = formData.orgUrl;
           document.getElementById('widget-scriptUrl').value = formData.scriptUrl;
 
-          // Remove the saved config after restoring
+          // Remove the hard reload config after restoring
           localStorage.removeItem('widget-config-saved');
-          console.log('Form values restored and saved config removed');
+          console.log('Hard reload config restored and removed');
+          return;
+        } catch (e) {
+          console.error('Could not restore hard reload config:', e);
+        }
+      }
+
+      // Otherwise restore current saved config (from last page state)
+      const savedConfig = localStorage.getItem('widget-config-current');
+      if (savedConfig) {
+        try {
+          const formData = JSON.parse(savedConfig);
+          console.log('Restoring form values from last page state:', formData);
+
+          document.getElementById('widget-appId').value = formData.appId;
+          document.getElementById('widget-orgId').value = formData.orgId;
+          document.getElementById('widget-orgUrl').value = formData.orgUrl;
+          document.getElementById('widget-scriptUrl').value = formData.scriptUrl;
+
+          console.log('Form values restored successfully');
         } catch (e) {
           console.error('Could not restore saved config:', e);
         }
       }
+    }
+
+    // Save form values whenever they change
+    function setupFormAutoSave() {
+      const inputs = ['widget-appId', 'widget-orgId', 'widget-orgUrl', 'widget-scriptUrl'];
+      inputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+          input.addEventListener('change', saveCurrentFormValues);
+          input.addEventListener('input', saveCurrentFormValues);
+        }
+      });
+      console.log('Form auto-save listeners registered');
     }
 
     // Parse URL parameters and populate widget configuration
@@ -590,9 +635,15 @@
       console.log('Configuration loaded from URL parameters');
     }
 
+    // Save form values before page unload (refresh, close, navigate away)
+    window.addEventListener('beforeunload', () => {
+      saveCurrentFormValues();
+    });
+
     // Auto-load widget on page load (unless autoLoad=false in URL)
     window.addEventListener('load', () => {
       loadConfigFromUrl();
+      setupFormAutoSave();
     });
   </script>
 
