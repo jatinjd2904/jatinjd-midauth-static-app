@@ -68,6 +68,10 @@
     let currentAccessToken = null;
     let tokenExpiresOn = null;
 
+    // ⚠️ NEW: Track pending mid-auth token and chat restoration state
+    let pendingMidAuthToken = null;
+    let chatRestored = false;
+
     // Check if token is expired or will expire soon (within 5 minutes)
     function isTokenExpired() {
       if (!tokenExpiresOn) return true;
@@ -140,12 +144,14 @@
     // Function to send mid-auth token to widget (can be called manually)
     function sendMidAuthToken() {
       if (!widgetLoaded) {
-        console.warn('Widget is not loaded yet');
+        console.warn('[MidAuth] Widget is not loaded yet');
         return false;
       }
 
-      if (!currentAccessToken || isTokenExpired()) {
-        console.warn('No valid access token available');
+      const tokenToSend = pendingMidAuthToken || currentAccessToken;
+
+      if (!tokenToSend || isTokenExpired()) {
+        console.warn('[MidAuth] No valid access token available');
         return false;
       }
 
@@ -154,18 +160,21 @@
             window.Microsoft.Omnichannel.LiveChatWidget &&
             window.Microsoft.Omnichannel.LiveChatWidget.SDK) {
 
-          console.log('Calling Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken()');
-          console.log('Token (first 50 chars):', currentAccessToken.substring(0, 50) + '...');
-          window.Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken(currentAccessToken);
-          console.log('Mid-auth token set successfully');
+          console.log('[MidAuth] Calling Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken()');
+          console.log('[MidAuth] Token (first 50 chars):', tokenToSend.substring(0, 50) + '...');
+          window.Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken(tokenToSend);
+          console.log('[MidAuth] ✅ Mid-auth token set successfully');
+
+          // Clear pending token after successful send
+          pendingMidAuthToken = null;
           return true;
 
         } else {
-          console.error('LiveChatWidget SDK not available');
+          console.error('[MidAuth] LiveChatWidget SDK not available');
           return false;
         }
       } catch (error) {
-        console.error('Error setting mid-auth token:', error);
+        console.error('[MidAuth] Error setting mid-auth token:', error);
         return false;
       }
     }
@@ -218,12 +227,20 @@
             }
           });
 
-          // Send mid-auth token to widget if it's already loaded
+          // Store as pending - will be sent when chat is ready/restored
           if (widgetLoaded) {
-            console.log('Widget is already loaded - sending mid-auth token');
-            sendMidAuthToken();
+            console.log('[MidAuth] Widget loaded - storing pending token');
+            pendingMidAuthToken = currentAccessToken;
+
+            // Check if chat already restored (race condition)
+            if (chatRestored) {
+              console.log('[MidAuth] Chat already restored - sending token now');
+              sendMidAuthToken();
+            } else {
+              console.log('[MidAuth] Waiting for chat to restore from cache...');
+            }
           } else {
-            console.log('Widget not loaded yet - token will be sent when widget loads');
+            console.log('[MidAuth] Widget not loaded yet - token will be used when widget loads');
           }
         }, 500);
 
@@ -257,6 +274,8 @@
     function logout() {
       currentAccessToken = null;
       tokenExpiresOn = null;
+      pendingMidAuthToken = null;
+      chatRestored = false;
       document.getElementById("user").innerHTML = '';
       const logoutRequest = {
         account: msalInstance.getAllAccounts()[0]
@@ -278,25 +297,21 @@
           console.log('Token expires:', new Date(tokenExpiresOn));
           displayUserInfo(response.account, currentAccessToken);
 
-          // Test the getAuthenticationToken function
-          setTimeout(function() {
-            console.log('Testing window.auth.getAuthenticationToken...');
-            window.auth.getAuthenticationToken(function(token) {
-              if (token) {
-                console.log('Test successful - Token retrieved:', token);
-              } else {
-                console.error('Test failed: No token returned');
-              }
-            });
+          // ⚠️ CRITICAL FIX: Don't send token immediately after redirect
+          // Store it as pending and wait for widget to restore chat context
+          console.log('[MidAuth] Token acquired after redirect - storing as pending');
+          pendingMidAuthToken = currentAccessToken;
 
-            // Send mid-auth token to widget if it's already loaded
-            if (widgetLoaded) {
-              console.log('Widget is already loaded - sending mid-auth token');
-              sendMidAuthToken();
-            } else {
-              console.log('Widget not loaded yet - token will be sent when widget loads');
-            }
-          }, 500);
+          // Check if widget already loaded and chat restored (race condition)
+          if (widgetLoaded && chatRestored) {
+            console.log('[MidAuth] Widget and chat already ready - sending token now');
+            setTimeout(() => sendMidAuthToken(), 500);
+          } else if (widgetLoaded) {
+            console.log('[MidAuth] Widget loaded - waiting for chat to restore...');
+          } else {
+            console.log('[MidAuth] Widget not loaded yet - will send token when ready');
+          }
+
         } else {
           const accounts = msalInstance.getAllAccounts();
           if (accounts.length > 0) {
@@ -372,23 +387,55 @@
       setupMidAuthTokenListener();
     }
 
-    // Set up listener for lcw:ready event to pass mid-auth token
+    // ⚠️ UPDATED: Set up listeners for chat restoration and mid-auth token passing
     function setupMidAuthTokenListener() {
-      console.log('Setting up lcw:ready event listener for mid-auth token...');
+      console.log('[MidAuth] Setting up event listeners...');
 
+      // Listen for lcw:ready event
       window.addEventListener('lcw:ready', function() {
-        console.log('lcw:ready event received - widget is ready');
+        console.log('[MidAuth] lcw:ready event received - widget is ready');
 
-        // Send token if user is authenticated
-        if (currentAccessToken && !isTokenExpired()) {
-          console.log('User is authenticated - sending token via setMidAuthToken');
-          sendMidAuthToken();
-        } else {
-          console.log('User is not authenticated - skipping mid-auth token setup');
+        // Don't send token immediately on lcw:ready
+        // Wait for chat to be restored from cache (if it exists)
+        // Widget will broadcast ChatRetrievedFromCache if there's cached chat
+      });
+
+      // ⚠️ KEY FIX: Listen for chat restoration from cache
+      // This event is broadcast by the widget when it restores liveChatContext
+      window.addEventListener('message', function(event) {
+        if (event.data && event.data.eventName === 'ChatRetrievedFromCache') {
+          console.log('[MidAuth] *** CHAT RESTORED FROM CACHE ***');
+          console.log('[MidAuth] Chat details:', {
+            chatId: event.data.payload?.chatId,
+            requestId: event.data.payload?.requestId
+          });
+
+          chatRestored = true;
+
+          // Now send the token if we have one pending
+          if (pendingMidAuthToken && !isTokenExpired()) {
+            console.log('[MidAuth] Sending pending token to restored chat...');
+            setTimeout(() => {
+              const success = sendMidAuthToken();
+              if (success) {
+                console.log('[MidAuth] ✅ Token sent to restored chat - should trigger mid-auth!');
+                alert('✅ Authentication successful! Your chat is now authenticated.');
+              } else {
+                console.error('[MidAuth] ❌ Failed to send token to restored chat');
+              }
+            }, 1000); // 1 second delay to ensure chat is fully ready
+          } else if (currentAccessToken && !isTokenExpired()) {
+            // Fallback: use current token if no pending token
+            console.log('[MidAuth] Using current token for restored chat');
+            pendingMidAuthToken = currentAccessToken;
+            setTimeout(() => sendMidAuthToken(), 1000);
+          } else {
+            console.log('[MidAuth] No valid token available for restored chat');
+          }
         }
       });
 
-      console.log('lcw:ready event listener registered');
+      console.log('[MidAuth] Event listeners registered');
     }
 
     function removeWidget() {
@@ -493,6 +540,8 @@
       }
 
       widgetLoaded = false;
+      chatRestored = false;
+      pendingMidAuthToken = null;
       showWidgetStatus('Widget removed successfully. You can now load a different widget configuration.');
       console.log('Widget cleanup complete');
     }
@@ -599,7 +648,7 @@
       }
     }
 
-    // Save form values whenever they change
+    // Set up auto-save for form fields
     function setupFormAutoSave() {
       const inputs = ['widget-appId', 'widget-orgId', 'widget-orgUrl', 'widget-scriptUrl'];
       inputs.forEach(inputId => {
@@ -609,55 +658,19 @@
           input.addEventListener('input', saveCurrentFormValues);
         }
       });
-      console.log('Form auto-save listeners registered');
+      console.log('Form auto-save enabled');
     }
 
-    // Parse URL parameters and populate widget configuration
-    function loadConfigFromUrl() {
-      // First, restore any saved configuration from hard reload
-      restoreSavedConfig();
-
-      const urlParams = new URLSearchParams(window.location.search);
-
-      // Widget parameters
-      if (urlParams.has('appId')) {
-        document.getElementById('widget-appId').value = urlParams.get('appId');
-      }
-      if (urlParams.has('orgId')) {
-        document.getElementById('widget-orgId').value = urlParams.get('orgId');
-      }
-      if (urlParams.has('orgUrl')) {
-        document.getElementById('widget-orgUrl').value = urlParams.get('orgUrl');
-      }
-      if (urlParams.has('scriptUrl')) {
-        document.getElementById('widget-scriptUrl').value = urlParams.get('scriptUrl');
-      }
-
-      // Auto-load parameter (default: true)
-      const autoLoad = urlParams.get('autoLoad');
-      if (autoLoad !== 'false') {
-        setTimeout(() => {
-          loadWidget();
-        }, 1000);
-      }
-
-      console.log('Configuration loaded from URL parameters');
-    }
-
-    // Save form values before page unload (refresh, close, navigate away)
+    // Save form values before page unload
     window.addEventListener('beforeunload', () => {
       saveCurrentFormValues();
     });
 
-    // Auto-load widget on page load (unless autoLoad=false in URL)
-    window.addEventListener('load', () => {
-      loadConfigFromUrl();
+    // Initialize on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      restoreSavedConfig();
       setupFormAutoSave();
     });
   </script>
-
-  <!-- Widgets will be loaded dynamically via the configuration section above -->
-  <!-- Static widget loading disabled - use the configuration section to load widgets dynamically -->
-
 </body>
 </html>

@@ -69,6 +69,10 @@
     let currentAccessToken = null;
     let tokenExpiresOn = null;
 
+    // ⚠️ NEW: Track pending mid-auth token and chat restoration state
+    let pendingMidAuthToken = null;
+    let chatRestored = false;
+
     // Check if token is expired or will expire soon (within 5 minutes)
     function isTokenExpired() {
       if (!tokenExpiresOn) return true;
@@ -135,15 +139,17 @@
       }
     };
 
-    // Function to send mid-auth token to widget (can be called manually)
+    // Function to send mid-auth token to widget
     function sendMidAuthToken() {
       if (!widgetLoaded) {
-        console.warn('Widget is not loaded yet');
+        console.warn('[MidAuth] Widget is not loaded yet');
         return false;
       }
 
-      if (!currentAccessToken || isTokenExpired()) {
-        console.warn('No valid access token available');
+      const tokenToSend = pendingMidAuthToken || currentAccessToken;
+
+      if (!tokenToSend || isTokenExpired()) {
+        console.warn('[MidAuth] No valid access token available');
         return false;
       }
 
@@ -152,18 +158,21 @@
             window.Microsoft.Omnichannel.LiveChatWidget &&
             window.Microsoft.Omnichannel.LiveChatWidget.SDK) {
 
-          console.log('Calling Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken()');
-          console.log('Token (first 50 chars):', currentAccessToken.substring(0, 50) + '...');
-          window.Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken(currentAccessToken);
-          console.log('Mid-auth token set successfully');
+          console.log('[MidAuth] Calling Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken()');
+          console.log('[MidAuth] Token (first 50 chars):', tokenToSend.substring(0, 50) + '...');
+          window.Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken(tokenToSend);
+          console.log('[MidAuth] ✅ Mid-auth token set successfully');
+
+          // Clear pending token after successful send
+          pendingMidAuthToken = null;
           return true;
 
         } else {
-          console.error('LiveChatWidget SDK not available');
+          console.error('[MidAuth] LiveChatWidget SDK not available');
           return false;
         }
       } catch (error) {
-        console.error('Error setting mid-auth token:', error);
+        console.error('[MidAuth] Error setting mid-auth token:', error);
         return false;
       }
     }
@@ -213,12 +222,20 @@
             }
           });
 
-          // Send mid-auth token to widget if it's already loaded
+          // Store as pending - will be sent when chat is ready/restored
           if (widgetLoaded) {
-            console.log('Widget is already loaded - sending mid-auth token');
-            sendMidAuthToken();
+            console.log('[MidAuth] Widget loaded - storing pending token');
+            pendingMidAuthToken = currentAccessToken;
+
+            // Check if chat already restored (race condition)
+            if (chatRestored) {
+              console.log('[MidAuth] Chat already restored - sending token now');
+              sendMidAuthToken();
+            } else {
+              console.log('[MidAuth] Waiting for chat to restore from cache...');
+            }
           } else {
-            console.log('Widget not loaded yet - token will be sent when widget loads');
+            console.log('[MidAuth] Widget not loaded yet - token will be used when widget loads');
           }
         }, 500);
 
@@ -250,6 +267,8 @@
     function logout() {
       currentAccessToken = null;
       tokenExpiresOn = null;
+      pendingMidAuthToken = null;
+      chatRestored = false;
       document.getElementById("user").innerHTML = '';
       const logoutRequest = {
         account: msalInstance.getAllAccounts()[0]
@@ -270,24 +289,21 @@
           console.log('Token expires:', new Date(tokenExpiresOn));
           displayUserInfo(response.account, currentAccessToken);
 
-          setTimeout(function() {
-            console.log('Testing window.auth.getAuthenticationToken...');
-            window.auth.getAuthenticationToken(function(token) {
-              if (token) {
-                console.log('Test successful - Token retrieved:', token);
-              } else {
-                console.error('Test failed: No token returned');
-              }
-            });
+          // ⚠️ CRITICAL FIX: Don't send token immediately after redirect
+          // Store it as pending and wait for widget to restore chat context
+          console.log('[MidAuth] Token acquired after redirect - storing as pending');
+          pendingMidAuthToken = currentAccessToken;
 
-            // Send mid-auth token to widget if it's already loaded
-            if (widgetLoaded) {
-              console.log('Widget is already loaded - sending mid-auth token');
-              sendMidAuthToken();
-            } else {
-              console.log('Widget not loaded yet - token will be sent when widget loads');
-            }
-          }, 500);
+          // Check if widget already loaded and chat restored (race condition)
+          if (widgetLoaded && chatRestored) {
+            console.log('[MidAuth] Widget and chat already ready - sending token now');
+            setTimeout(() => sendMidAuthToken(), 500);
+          } else if (widgetLoaded) {
+            console.log('[MidAuth] Widget loaded - waiting for chat to restore...');
+          } else {
+            console.log('[MidAuth] Widget not loaded yet - will send token when ready');
+          }
+
         } else {
           const accounts = msalInstance.getAllAccounts();
           if (accounts.length > 0) {
@@ -311,25 +327,20 @@
 
       console.log('loadWidget() called with:', { appId, orgId, orgUrl, scriptUrl });
 
-      // Validate inputs
       if (!appId || !orgId || !orgUrl || !scriptUrl) {
         showWidgetStatus('All fields are required');
         console.error('Validation failed - missing required fields');
         return;
       }
 
-      // Check if already loaded
       if (widgetLoaded) {
         showWidgetStatus('Widget is already loaded. Remove it first to reload.');
         return;
       }
 
-      // Create script element with standard ID
       const script = document.createElement('script');
       script.id = 'Microsoft_Omnichannel_LCWidget';
 
-      // IMPORTANT: Set all data attributes BEFORE setting src
-      // This ensures attributes are available when the script loads
       script.setAttribute('data-app-id', appId);
       script.setAttribute('data-lcw-version', 'test');
       script.setAttribute('data-org-id', orgId);
@@ -343,15 +354,12 @@
         'data-lcw-version': script.getAttribute('data-lcw-version')
       });
 
-      // Set src LAST to trigger loading only after all attributes are set
-      // Add cache-busting parameter to force fresh script load
       const cacheBuster = new Date().getTime();
       const separator = scriptUrl.includes('?') ? '&' : '?';
       script.src = scriptUrl + separator + 'cb=' + cacheBuster;
 
       console.log('Widget script URL with cache-buster:', script.src);
 
-      // Add to document
       document.body.appendChild(script);
       widgetLoaded = true;
 
@@ -359,27 +367,50 @@
       console.log('Widget loaded:', { appId, orgId, orgUrl });
       showWidgetStatus(`Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
 
-      // Set up lcw:ready event listener for mid-auth token passing
       setupMidAuthTokenListener();
     }
 
-    // Set up listener for lcw:ready event to pass mid-auth token
+    // ⚠️ UPDATED: Set up listeners for chat restoration and mid-auth token passing
     function setupMidAuthTokenListener() {
-      console.log('Setting up lcw:ready event listener for mid-auth token...');
+      console.log('[MidAuth] Setting up event listeners...');
 
       window.addEventListener('lcw:ready', function() {
-        console.log('lcw:ready event received - widget is ready');
+        console.log('[MidAuth] lcw:ready event received - widget is ready');
+      });
 
-        // Send token if user is authenticated
-        if (currentAccessToken && !isTokenExpired()) {
-          console.log('User is authenticated - sending token via setMidAuthToken');
-          sendMidAuthToken();
-        } else {
-          console.log('User is not authenticated - widget will operate in unauthenticated mode');
+      // ⚠️ KEY FIX: Listen for chat restoration from cache
+      window.addEventListener('message', function(event) {
+        if (event.data && event.data.eventName === 'ChatRetrievedFromCache') {
+          console.log('[MidAuth] *** CHAT RESTORED FROM CACHE ***');
+          console.log('[MidAuth] Chat details:', {
+            chatId: event.data.payload?.chatId,
+            requestId: event.data.payload?.requestId
+          });
+
+          chatRestored = true;
+
+          if (pendingMidAuthToken && !isTokenExpired()) {
+            console.log('[MidAuth] Sending pending token to restored chat...');
+            setTimeout(() => {
+              const success = sendMidAuthToken();
+              if (success) {
+                console.log('[MidAuth] ✅ Token sent to restored chat - should trigger mid-auth!');
+                alert('✅ Authentication successful! Your chat is now authenticated.');
+              } else {
+                console.error('[MidAuth] ❌ Failed to send token to restored chat');
+              }
+            }, 1000);
+          } else if (currentAccessToken && !isTokenExpired()) {
+            console.log('[MidAuth] Using current token for restored chat');
+            pendingMidAuthToken = currentAccessToken;
+            setTimeout(() => sendMidAuthToken(), 1000);
+          } else {
+            console.log('[MidAuth] No valid token available for restored chat');
+          }
         }
       });
 
-      console.log('lcw:ready event listener registered');
+      console.log('[MidAuth] Event listeners registered');
     }
 
     function removeWidget() {
@@ -387,10 +418,8 @@
 
       console.log('Removing widget...');
 
-      // Remove all iframes (widget loads in iframe)
       const iframes = document.querySelectorAll('iframe');
       iframes.forEach(iframe => {
-        // Check if it's a widget iframe
         if (iframe.src && (iframe.src.includes('omnichannelengagementhub') ||
             iframe.src.includes('livechat') ||
             iframe.src.includes('lcw') ||
@@ -402,10 +431,8 @@
       });
       console.log('All widget iframes removed');
 
-      // Remove all widget-related DOM elements (comprehensive cleanup)
       let removedCount = 0;
 
-      // Remove all elements with oc-lcw class prefix
       const ocElements = document.querySelectorAll('[class*="oc-lcw"], [id*="oc-lcw"]');
       ocElements.forEach(el => {
         el.remove();
@@ -413,19 +440,16 @@
       });
       console.log(`Removed ${removedCount} widget DOM elements`);
 
-      // Remove all Microsoft.Omnichannel related elements
       const omnichannelElements = document.querySelectorAll('[class*="microsoft-omnichannel"], [id*="microsoft-omnichannel"]');
       omnichannelElements.forEach(el => {
         el.remove();
       });
 
-      // Remove the script element
       if (script) {
         script.remove();
         console.log('Widget script removed');
       }
 
-      // Clean up localStorage (widget session data)
       try {
         const localStorageKeys = Object.keys(localStorage);
         let localStorageCleanedCount = 0;
@@ -445,7 +469,6 @@
         console.warn('Could not clean up localStorage:', e);
       }
 
-      // Clean up sessionStorage (widget session data)
       try {
         const sessionStorageKeys = Object.keys(sessionStorage);
         let sessionStorageCleanedCount = 0;
@@ -465,7 +488,6 @@
         console.warn('Could not clean up sessionStorage:', e);
       }
 
-      // Clean up global window objects created by the widget
       try {
         if (window.Microsoft && window.Microsoft.Omnichannel) {
           delete window.Microsoft.Omnichannel.LiveChatWidget;
@@ -484,6 +506,8 @@
       }
 
       widgetLoaded = false;
+      chatRestored = false;
+      pendingMidAuthToken = null;
       showWidgetStatus('Widget removed successfully. You can now load a different widget configuration.');
       console.log('Widget cleanup complete');
     }
@@ -491,7 +515,6 @@
     async function hardReload() {
       console.log('Performing hard reload with cache clear...');
 
-      // Save current form values to localStorage before reload
       const formData = {
         appId: document.getElementById('widget-appId').value,
         orgId: document.getElementById('widget-orgId').value,
@@ -501,10 +524,8 @@
       localStorage.setItem('widget-config-saved', JSON.stringify(formData));
       console.log('Saved form values:', formData);
 
-      // Remove widget first
       removeWidget();
 
-      // Clear all caches via Cache API (Service Worker caches)
       if ('caches' in window) {
         try {
           const cacheNames = await caches.keys();
@@ -516,10 +537,8 @@
         }
       }
 
-      // Hard reload (bypass cache) after a short delay
       setTimeout(() => {
         console.log('Performing hard reload (Ctrl+Shift+R equivalent)');
-        // Force reload from server, bypassing cache
         window.location.reload(true);
       }, 500);
     }
@@ -530,13 +549,11 @@
       statusDiv.style.display = 'block';
       statusText.textContent = message;
 
-      // Auto-hide after 5 seconds
       setTimeout(() => {
         statusDiv.style.display = 'none';
       }, 5000);
     }
 
-    // Save current form values to localStorage (for page refresh persistence)
     function saveCurrentFormValues() {
       const formData = {
         appId: document.getElementById('widget-appId').value,
@@ -548,9 +565,7 @@
       console.log('Form values saved to localStorage');
     }
 
-    // Restore saved form values from localStorage (on page load)
     function restoreSavedConfig() {
-      // First check for hard reload saved config (one-time use)
       const hardReloadConfig = localStorage.getItem('widget-config-saved');
       if (hardReloadConfig) {
         try {
@@ -562,7 +577,6 @@
           document.getElementById('widget-orgUrl').value = formData.orgUrl;
           document.getElementById('widget-scriptUrl').value = formData.scriptUrl;
 
-          // Remove the hard reload config after restoring
           localStorage.removeItem('widget-config-saved');
           console.log('Hard reload config restored and removed');
           return;
@@ -571,7 +585,6 @@
         }
       }
 
-      // Otherwise restore current saved config (from last page state)
       const savedConfig = localStorage.getItem('widget-config-current');
       if (savedConfig) {
         try {
@@ -590,7 +603,6 @@
       }
     }
 
-    // Save form values whenever they change
     function setupFormAutoSave() {
       const inputs = ['widget-appId', 'widget-orgId', 'widget-orgUrl', 'widget-scriptUrl'];
       inputs.forEach(inputId => {
@@ -600,54 +612,17 @@
           input.addEventListener('input', saveCurrentFormValues);
         }
       });
-      console.log('Form auto-save listeners registered');
+      console.log('Form auto-save enabled');
     }
 
-    // Parse URL parameters and populate widget configuration
-    function loadConfigFromUrl() {
-      // First, restore any saved configuration from hard reload
-      restoreSavedConfig();
-
-      const urlParams = new URLSearchParams(window.location.search);
-
-      // Widget parameters
-      if (urlParams.has('appId')) {
-        document.getElementById('widget-appId').value = urlParams.get('appId');
-      }
-      if (urlParams.has('orgId')) {
-        document.getElementById('widget-orgId').value = urlParams.get('orgId');
-      }
-      if (urlParams.has('orgUrl')) {
-        document.getElementById('widget-orgUrl').value = urlParams.get('orgUrl');
-      }
-      if (urlParams.has('scriptUrl')) {
-        document.getElementById('widget-scriptUrl').value = urlParams.get('scriptUrl');
-      }
-
-      // Auto-load parameter (default: true)
-      const autoLoad = urlParams.get('autoLoad');
-      if (autoLoad !== 'false') {
-        setTimeout(() => {
-          loadWidget();
-        }, 1000);
-      }
-
-      console.log('Configuration loaded from URL parameters');
-    }
-
-    // Save form values before page unload (refresh, close, navigate away)
     window.addEventListener('beforeunload', () => {
       saveCurrentFormValues();
     });
 
-    // Auto-load widget on page load (unless autoLoad=false in URL)
-    window.addEventListener('load', () => {
-      loadConfigFromUrl();
+    window.addEventListener('DOMContentLoaded', () => {
+      restoreSavedConfig();
       setupFormAutoSave();
     });
   </script>
-
-  <!-- Widget will be loaded dynamically via the configuration section above -->
-
 </body>
 </html>
