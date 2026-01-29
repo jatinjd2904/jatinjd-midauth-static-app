@@ -181,6 +181,17 @@
     async function login() {
       try {
         console.log('Initiating MSAL login redirect...');
+
+        // ⚠️ CRITICAL: Save widget state before redirect
+        if (widgetLoaded) {
+          const widgetState = {
+            widgetWasLoaded: true,
+            timestamp: Date.now()
+          };
+          localStorage.setItem('widget-state-before-login', JSON.stringify(widgetState));
+          console.log('[MidAuth] Saved widget state before login redirect');
+        }
+
         await msalInstance.loginRedirect(tokenRequest);
       } catch (error) {
         console.error('Login failed:', error);
@@ -294,14 +305,27 @@
           console.log('[MidAuth] Token acquired after redirect - storing as pending');
           pendingMidAuthToken = currentAccessToken;
 
-          // Check if widget already loaded and chat restored (race condition)
-          if (widgetLoaded && chatRestored) {
-            console.log('[MidAuth] Widget and chat already ready - sending token now');
-            setTimeout(() => sendMidAuthToken(), 500);
-          } else if (widgetLoaded) {
-            console.log('[MidAuth] Widget loaded - waiting for chat to restore...');
+          // ⚠️ NEW: Check if widget was loaded before login redirect
+          const widgetState = localStorage.getItem('widget-state-before-login');
+          if (widgetState) {
+            try {
+              const state = JSON.parse(widgetState);
+              console.log('[MidAuth] Widget was loaded before login - auto-reloading...', state);
+
+              // Remove the state flag
+              localStorage.removeItem('widget-state-before-login');
+
+              // Auto-reload the widget to restore the chat
+              setTimeout(() => {
+                console.log('[MidAuth] Auto-loading widget after login...');
+                loadWidget();
+              }, 1000); // 1 second delay to ensure page is fully loaded
+
+            } catch (e) {
+              console.error('[MidAuth] Error parsing widget state:', e);
+            }
           } else {
-            console.log('[MidAuth] Widget not loaded yet - will send token when ready');
+            console.log('[MidAuth] No widget state found - user needs to manually load widget');
           }
 
         } else {
