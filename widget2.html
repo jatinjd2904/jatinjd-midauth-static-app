@@ -333,6 +333,15 @@
           if (accounts.length > 0) {
             console.log('User already logged in');
             getToken();
+
+            // ⚠️ NEW: Auto-load widget if user is logged in and widget config exists
+            const savedConfig = localStorage.getItem('widget-config-current');
+            if (savedConfig && !widgetLoaded) {
+              console.log('[MidAuth] User logged in + widget config found - auto-loading widget...');
+              setTimeout(() => {
+                loadWidget();
+              }, 1000);
+            }
           }
         }
       })
