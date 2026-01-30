@@ -131,6 +131,10 @@ function logout() {
   pendingMidAuthToken = null;
   chatRestored = false;
 
+  // Save current page to return to after logout
+  const currentPage = window.location.href;
+  localStorage.setItem('auth-logout-return-url', currentPage);
+
   // Update UI
   updateAuthUI();
 
@@ -140,20 +144,18 @@ function logout() {
     userInfoElement.innerHTML = '';
   }
 
-  // IMPORTANT: Use logoutPopup to stay on current page instead of logoutRedirect
+  // Use logoutRedirect with postLogoutRedirectUri set to current page
   const account = msalInstance.getAllAccounts()[0];
   if (account) {
-    msalInstance.logoutPopup({
+    msalInstance.logoutRedirect({
       account: account,
-      postLogoutRedirectUri: window.location.href
-    }).then(() => {
-      console.log('[Auth] Logout successful');
-    }).catch(error => {
-      console.error('[Auth] Logout error:', error);
-      // Fallback: clear cache manually
-      msalInstance.clearCache();
-      window.location.reload();
+      postLogoutRedirectUri: currentPage
     });
+  } else {
+    // No account found, just clear cache and reload
+    console.log('[Auth] No account found, clearing cache');
+    msalInstance.clearCache();
+    window.location.reload();
   }
 }
 
@@ -301,6 +303,16 @@ async function handleAuthRedirect() {
       }
 
     } else {
+      // Check if this is a logout redirect return
+      const logoutReturnUrl = localStorage.getItem('auth-logout-return-url');
+      if (logoutReturnUrl) {
+        console.log('[Auth] Returned from logout redirect');
+        localStorage.removeItem('auth-logout-return-url');
+        // Already on the correct page, just update UI
+        updateAuthUI();
+        return;
+      }
+
       // No redirect response, check if user is already logged in
       const accounts = msalInstance.getAllAccounts();
       if (accounts.length > 0) {
