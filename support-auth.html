@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authenticated Chat Support - Power Pages Auth Demo</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+</head>
+<body>
+  <!-- Header with Navigation -->
+  <header class="site-header">
+    <div class="header-container">
+      <nav class="site-nav">
+        <a href="index.html">Home</a>
+        <a href="support-auth.html">Support (Authenticated)</a>
+        <a href="support-unauth.html">Support (Unauthenticated)</a>
+      </nav>
+      <div class="auth-section">
+        <span class="user-info" id="user-info-text"></span>
+        <button id="auth-button" class="auth-button" onclick="login()">Login</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
+    <h1 class="page-title">Authenticated Chat Support</h1>
+    <p class="page-description">
+      This page displays an authenticated chat widget. You can access this page whether you're logged in or not.
+      If you log in during your chat session, the widget will be upgraded to authenticated mode using mid-authentication.
+    </p>
+
+    <!-- Info Box -->
+    <div class="info-box info">
+      <h3>About This Widget</h3>
+      <p>
+        This widget uses <strong>authenticated chat configuration</strong>. When you log in while chatting,
+        the SDK will automatically call <code>setMidAuthToken()</code> to upgrade your session to authenticated mode.
+      </p>
+    </div>
+
+    <div class="info-box warning">
+      <strong>Note:</strong> This page is accessible to everyone. Login is optional but recommended for a personalized experience.
+    </div>
+
+    <!-- Widget Configuration Section -->
+    <div class="widget-config-section">
+      <h2>Chat Widget Configuration</h2>
+
+      <div class="form-group">
+        <label for="widget-appId">App ID:</label>
+        <input type="text" id="widget-appId" value="9c155eb8-61cc-41ff-9433-16355ce73ed2">
+      </div>
+
+      <div class="form-group">
+        <label for="widget-orgId">Org ID:</label>
+        <input type="text" id="widget-orgId" value="1e9d7bbe-facf-f011-8537-000d3a59231e">
+      </div>
+
+      <div class="form-group">
+        <label for="widget-orgUrl">Org URL:</label>
+        <input type="text" id="widget-orgUrl" value="https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com">
+      </div>
+
+      <div class="form-group">
+        <label for="widget-scriptUrl">Script URL:</label>
+        <input type="text" id="widget-scriptUrl" value="https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js">
+      </div>
+
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="loadWidget()">Load Widget</button>
+        <button class="btn btn-secondary" onclick="removeWidget()">Remove Widget</button>
+        <button class="btn btn-warning" onclick="hardReload()">Remove & Clear Cache</button>
+      </div>
+    </div>
+
+    <!-- Widget Status -->
+    <div id="widget-status" class="widget-status">
+      <h3>Widget Status:</h3>
+      <pre id="widget-status-text"></pre>
+    </div>
+
+    <!-- User Info Display -->
+    <div id="user-info" class="user-info-display" style="display: none;">
+      <h3>Current User Information</h3>
+      <pre id="user-info-json"></pre>
+      <h3>Access Token (First 100 chars):</h3>
+      <pre id="token-preview"></pre>
+    </div>
+  </main>
+
+  <!-- Auth Script -->
+  <script src="auth.js"></script>
+
+  <!-- Widget Management Script -->
+  <script>
+    let widgetLoaded = false;
+
+    // Function to send mid-auth token to widget
+    function sendMidAuthToken() {
+      if (!widgetLoaded) {
+        console.warn('[MidAuth] Widget is not loaded yet');
+        return false;
+      }
+
+      const tokenToSend = pendingMidAuthToken || currentAccessToken;
+
+      if (!tokenToSend || isTokenExpired()) {
+        console.warn('[MidAuth] No valid access token available');
+        return false;
+      }
+
+      try {
+        if (window.Microsoft && window.Microsoft.Omnichannel &&
+            window.Microsoft.Omnichannel.LiveChatWidget &&
+            window.Microsoft.Omnichannel.LiveChatWidget.SDK) {
+
+          console.log('[MidAuth] Calling Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken()');
+          console.log('[MidAuth] Token (first 50 chars):', tokenToSend.substring(0, 50) + '...');
+          window.Microsoft.Omnichannel.LiveChatWidget.SDK.setMidAuthToken(tokenToSend);
+          console.log('[MidAuth] ✅ Mid-auth token set successfully');
+
+          // Clear pending token after successful send
+          pendingMidAuthToken = null;
+          return true;
+
+        } else {
+          console.error('[MidAuth] LiveChatWidget SDK not available');
+          return false;
+        }
+      } catch (error) {
+        console.error('[MidAuth] Error setting mid-auth token:', error);
+        return false;
+      }
+    }
+
+    function loadWidget() {
+      const appId = document.getElementById('widget-appId').value;
+      const orgId = document.getElementById('widget-orgId').value;
+      const orgUrl = document.getElementById('widget-orgUrl').value;
+      const scriptUrl = document.getElementById('widget-scriptUrl').value;
+
+      console.log('[Widget] loadWidget() called with:', { appId, orgId, orgUrl, scriptUrl });
+
+      // Validate inputs
+      if (!appId || !orgId || !orgUrl || !scriptUrl) {
+        showWidgetStatus('All fields are required');
+        console.error('[Widget] Validation failed - missing required fields');
+        return;
+      }
+
+      // Check if already loaded
+      if (widgetLoaded) {
+        showWidgetStatus('Widget is already loaded. Remove it first to reload.');
+        return;
+      }
+
+      // Create script element with standard ID
+      const script = document.createElement('script');
+      script.id = 'Microsoft_Omnichannel_LCWidget';
+
+      // Set all data attributes BEFORE setting src
+      script.setAttribute('data-app-id', appId);
+      script.setAttribute('data-lcw-version', 'test');
+      script.setAttribute('data-org-id', orgId);
+      script.setAttribute('data-org-url', orgUrl);
+
+      console.log('[Widget] Script element created with ID:', script.id);
+
+      // Set src LAST with cache-busting parameter
+      const cacheBuster = new Date().getTime();
+      const separator = scriptUrl.includes('?') ? '&' : '?';
+      script.src = scriptUrl + separator + 'cb=' + cacheBuster;
+
+      console.log('[Widget] Widget script URL with cache-buster:', script.src);
+
+      // Add to document
+      document.body.appendChild(script);
+      widgetLoaded = true;
+
+      console.log('[Widget] Widget loaded successfully');
+      showWidgetStatus(`Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
+
+      // Set up mid-auth token listener
+      setupMidAuthTokenListener();
+
+      // Save configuration
+      saveCurrentFormValues();
+    }
+
+    function setupMidAuthTokenListener() {
+      console.log('[MidAuth] Setting up event listeners...');
+
+      // Listen for lcw:ready event
+      window.addEventListener('lcw:ready', function() {
+        console.log('[MidAuth] lcw:ready event received - widget is ready');
+
+        // Wait for widget to restore chat, then send token if available
+        if (pendingMidAuthToken && !isTokenExpired()) {
+          console.log('[MidAuth] Pending token detected - waiting for chat restoration...');
+
+          setTimeout(() => {
+            console.log('[MidAuth] Sending pending token after restoration delay...');
+            const success = sendMidAuthToken();
+
+            if (success) {
+              console.log('[MidAuth] ✅ Token sent - should trigger mid-auth!');
+              alert('✅ Authentication successful! Your chat is now authenticated.');
+              chatRestored = true;
+            } else {
+              console.error('[MidAuth] ❌ Failed to send token');
+            }
+          }, 3000); // 3 second delay for chat restoration
+        } else if (currentAccessToken && !isTokenExpired()) {
+          // User was already logged in when widget loaded
+          console.log('[MidAuth] User already logged in - setting up token for existing chat');
+          pendingMidAuthToken = currentAccessToken;
+
+          setTimeout(() => {
+            console.log('[MidAuth] Sending token for existing authenticated user...');
+            sendMidAuthToken();
+            chatRestored = true;
+          }, 3000);
+        } else {
+          console.log('[MidAuth] No valid token available - widget will work in unauthenticated mode');
+        }
+      });
+
+      console.log('[MidAuth] Event listeners registered');
+    }
+
+    function removeWidget() {
+      const script = document.getElementById('Microsoft_Omnichannel_LCWidget');
+
+      console.log('[Widget] Removing widget...');
+
+      // Remove all iframes
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        if (iframe.src && (iframe.src.includes('omnichannelengagementhub') ||
+            iframe.src.includes('livechat') ||
+            iframe.src.includes('lcw') ||
+            iframe.id.includes('lcw') ||
+            iframe.className.includes('lcw'))) {
+          console.log('[Widget] Removing widget iframe:', iframe.src);
+          iframe.remove();
+        }
+      });
+
+      // Remove all widget-related DOM elements
+      const ocElements = document.querySelectorAll('[class*="oc-lcw"], [id*="oc-lcw"]');
+      ocElements.forEach(el => el.remove());
+
+      const omnichannelElements = document.querySelectorAll('[class*="microsoft-omnichannel"], [id*="microsoft-omnichannel"]');
+      omnichannelElements.forEach(el => el.remove());
+
+      // Remove the script element
+      if (script) {
+        script.remove();
+        console.log('[Widget] Widget script removed');
+      }
+
+      // Clean up localStorage
+      try {
+        const localStorageKeys = Object.keys(localStorage);
+        localStorageKeys.forEach(key => {
+          if (key.startsWith('oc-lcw-') ||
+              key.includes('Omnichannel') ||
+              key.includes('livechat') ||
+              key.includes('reconnectId') ||
+              key.includes('chatToken')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.warn('[Widget] Could not clean up localStorage:', e);
+      }
+
+      // Clean up sessionStorage
+      try {
+        const sessionStorageKeys = Object.keys(sessionStorage);
+        sessionStorageKeys.forEach(key => {
+          if (key.startsWith('oc-lcw-') ||
+              key.includes('Omnichannel') ||
+              key.includes('livechat') ||
+              key.includes('reconnectId') ||
+              key.includes('chatToken')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.warn('[Widget] Could not clean up sessionStorage:', e);
+      }
+
+      // Clean up global window objects
+      try {
+        if (window.Microsoft && window.Microsoft.Omnichannel) {
+          delete window.Microsoft.Omnichannel.LiveChatWidget;
+        }
+        if (window.Microsoft && window.Microsoft.Omnichannel && Object.keys(window.Microsoft.Omnichannel).length === 0) {
+          delete window.Microsoft.Omnichannel;
+        }
+        if (window.Microsoft && Object.keys(window.Microsoft).length === 0) {
+          delete window.Microsoft;
+        }
+      } catch (e) {
+        console.warn('[Widget] Could not clean up global objects:', e);
+      }
+
+      widgetLoaded = false;
+      chatRestored = false;
+      pendingMidAuthToken = null;
+      showWidgetStatus('Widget removed successfully. You can now load a different widget configuration.');
+      console.log('[Widget] Widget cleanup complete');
+    }
+
+    async function hardReload() {
+      console.log('[Widget] Performing hard reload with cache clear...');
+
+      // Save current form values
+      saveCurrentFormValues();
+
+      // Remove widget first
+      removeWidget();
+
+      // Clear all caches
+      if ('caches' in window) {
+        try {
+          const cacheNames = await caches.keys();
+          console.log('[Widget] Clearing', cacheNames.length, 'cache(s)');
+          await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)));
+          console.log('[Widget] All service worker caches cleared');
+        } catch (e) {
+          console.warn('[Widget] Could not clear service worker caches:', e);
+        }
+      }
+
+      // Hard reload after a short delay
+      setTimeout(() => {
+        console.log('[Widget] Performing hard reload');
+        window.location.reload(true);
+      }, 500);
+    }
+
+    function showWidgetStatus(message) {
+      const statusDiv = document.getElementById('widget-status');
+      const statusText = document.getElementById('widget-status-text');
+
+      if (statusDiv && statusText) {
+        statusDiv.classList.add('show');
+        statusText.textContent = message;
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+          statusDiv.classList.remove('show');
+        }, 5000);
+      }
+    }
+
+    function saveCurrentFormValues() {
+      const formData = {
+        appId: document.getElementById('widget-appId').value,
+        orgId: document.getElementById('widget-orgId').value,
+        orgUrl: document.getElementById('widget-orgUrl').value,
+        scriptUrl: document.getElementById('widget-scriptUrl').value
+      };
+      localStorage.setItem('widget-config-current', JSON.stringify(formData));
+      console.log('[Widget] Form values saved to localStorage');
+    }
+
+    function restoreSavedConfig() {
+      const savedConfig = localStorage.getItem('widget-config-current');
+      if (savedConfig) {
+        try {
+          const formData = JSON.parse(savedConfig);
+          console.log('[Widget] Restoring form values from saved config');
+
+          document.getElementById('widget-appId').value = formData.appId;
+          document.getElementById('widget-orgId').value = formData.orgId;
+          document.getElementById('widget-orgUrl').value = formData.orgUrl;
+          document.getElementById('widget-scriptUrl').value = formData.scriptUrl;
+
+          console.log('[Widget] Form values restored successfully');
+        } catch (e) {
+          console.error('[Widget] Could not restore saved config:', e);
+        }
+      }
+    }
+
+    function setupFormAutoSave() {
+      const inputs = ['widget-appId', 'widget-orgId', 'widget-orgUrl', 'widget-scriptUrl'];
+      inputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+          input.addEventListener('change', saveCurrentFormValues);
+          input.addEventListener('input', saveCurrentFormValues);
+        }
+      });
+      console.log('[Widget] Form auto-save enabled');
+    }
+
+    // Display user info if authenticated
+    document.addEventListener('DOMContentLoaded', () => {
+      // Restore saved config
+      restoreSavedConfig();
+      setupFormAutoSave();
+
+      // Check auth state and display user info
+      setTimeout(() => {
+        const user = getCurrentUser();
+        if (user) {
+          const userInfoDiv = document.getElementById('user-info');
+          const userInfoJson = document.getElementById('user-info-json');
+          const tokenPreview = document.getElementById('token-preview');
+
+          if (userInfoDiv && userInfoJson) {
+            userInfoDiv.style.display = 'block';
+            userInfoJson.textContent = JSON.stringify(user, null, 2);
+
+            if (tokenPreview && currentAccessToken) {
+              tokenPreview.textContent = currentAccessToken.substring(0, 100) + '...';
+            }
+          }
+        }
+      }, 500);
+    });
+
+    // Save form values before page unload
+    window.addEventListener('beforeunload', () => {
+      saveCurrentFormValues();
+    });
+  </script>
+</body>
+</html>
