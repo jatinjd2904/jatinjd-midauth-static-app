@@ -430,6 +430,48 @@
     window.addEventListener('beforeunload', () => {
       saveCurrentFormValues();
     });
+
+    // Listen for logout event to clear chat context (authenticated chat only)
+    window.addEventListener('auth:logout', function(event) {
+      console.log('[Widget] Logout detected - clearing authenticated chat context');
+
+      // Clear chat widget context for authenticated chat
+      // This prevents user from reconnecting to the same authenticated session after logout
+      try {
+        const localStorageKeys = Object.keys(localStorage);
+        let clearedCount = 0;
+        localStorageKeys.forEach(key => {
+          if (key.startsWith('oc-lcw-') ||
+              key.includes('Omnichannel') ||
+              key.includes('livechat') ||
+              key.includes('reconnectId') ||
+              key.includes('chatToken')) {
+            localStorage.removeItem(key);
+            clearedCount++;
+            console.log('[Widget] Cleared localStorage key:', key);
+          }
+        });
+        console.log(`[Widget] Cleared ${clearedCount} chat storage items for authenticated chat`);
+      } catch (e) {
+        console.warn('[Widget] Could not clear chat storage:', e);
+      }
+
+      // Also clear sessionStorage
+      try {
+        const sessionStorageKeys = Object.keys(sessionStorage);
+        sessionStorageKeys.forEach(key => {
+          if (key.startsWith('oc-lcw-') ||
+              key.includes('Omnichannel') ||
+              key.includes('livechat') ||
+              key.includes('reconnectId') ||
+              key.includes('chatToken')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.warn('[Widget] Could not clear sessionStorage:', e);
+      }
+    });
   </script>
 </body>
 </html>

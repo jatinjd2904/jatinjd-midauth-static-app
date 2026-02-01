@@ -433,6 +433,19 @@
     window.addEventListener('beforeunload', () => {
       saveCurrentFormValues();
     });
+
+    // IMPORTANT: For UNAUTHENTICATED chat, we do NOT clear chat context on logout
+    // This is intentional behavior - anonymous chat sessions should persist
+    // regardless of authentication state. Users should always be able to reconnect
+    // to the same anonymous chat session whether they're logged in or not.
+    //
+    // If you need to clear chat on logout for unauthenticated chat, uncomment below:
+    /*
+    window.addEventListener('auth:logout', function(event) {
+      console.log('[Widget] Logout detected - but preserving unauthenticated chat context');
+      // Intentionally NOT clearing storage for unauthenticated chat
+    });
+    */
   </script>
 </body>
 </html>

@@ -56,8 +56,11 @@ jatinjd-midauth-static-app/
 ### Logout Flow
 1. User clicks "Logout" button on any page
 2. Authentication state is cleared
-3. User stays on the current page (popup-based logout)
-4. No redirect occurs
+3. `auth:logout` event is dispatched for pages to handle
+4. **Authenticated chat page**: Clears chat context/storage (user cannot reconnect to same session)
+5. **Unauthenticated chat page**: Preserves chat context (user can always reconnect to same anonymous session)
+6. User stays on the current page (redirect-based logout returns to same page)
+7. No extra tabs or popups
 
 ### Mid-Authentication Flow
 1. User opens a chat widget (authenticated or not)
@@ -111,7 +114,22 @@ const tokenRequest = {
 - Implements `window.auth.getAuthenticationToken()` for widget callbacks
 - Handles token refresh automatically
 - Saves return URL for post-login redirect
-- Uses popup logout to avoid page redirect
+- Dispatches `auth:logout` event when user logs out
+- Uses redirect-based logout that returns to current page
+
+### Chat Context Management
+
+**Authenticated Chat (support-auth.html):**
+- When user logs out, chat context is **cleared**
+- User cannot reconnect to the same authenticated chat session after logout
+- This ensures security - authenticated sessions are tied to user identity
+- On logout, all chat-related localStorage/sessionStorage is removed
+
+**Unauthenticated Chat (support-unauth.html):**
+- When user logs in/out, chat context is **preserved**
+- User can always reconnect to the same anonymous chat session
+- Login/logout does not affect the anonymous chat experience
+- Chat storage persists across authentication state changes
 
 ### Widget Management
 Each support page includes:

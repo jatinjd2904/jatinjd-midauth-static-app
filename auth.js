@@ -135,6 +135,13 @@ function logout() {
   const currentPage = window.location.href;
   localStorage.setItem('auth-logout-return-url', currentPage);
 
+  // Trigger logout event for pages to handle (e.g., clear chat for authenticated chat pages)
+  const logoutEvent = new CustomEvent('auth:logout', {
+    detail: { timestamp: Date.now() }
+  });
+  window.dispatchEvent(logoutEvent);
+  console.log('[Auth] Dispatched auth:logout event');
+
   // Update UI
   updateAuthUI();
 
