@@ -123,6 +123,25 @@
         });
 
         console.log(`[Widget] 🔥 Cleared ${keysToRemove.length} items before widget init`);
+
+        // Also clear cookies
+        const cookies = document.cookie.split(';');
+        let cookiesCleared = 0;
+        cookies.forEach(cookie => {
+          const cookieName = cookie.split('=')[0].trim();
+          if (cookieName && (
+            cookieName.startsWith('oc-lcw-') ||
+            cookieName.includes('Omnichannel') ||
+            cookieName.includes('livechat') ||
+            cookieName.includes('reconnect') ||
+            cookieName.includes('conversation')
+          )) {
+            console.log('[Widget] 🔥 Clearing cookie:', cookieName);
+            document.cookie = cookieName + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            cookiesCleared++;
+          }
+        });
+        console.log(`[Widget] 🔥 Cleared ${cookiesCleared} cookies`);
       }
     })();
 

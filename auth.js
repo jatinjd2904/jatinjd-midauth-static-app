@@ -28,6 +28,25 @@
     });
 
     console.log(`[Auth] 🔥 Immediately cleared ${keysToRemove.length} items`);
+
+    // Also clear cookies
+    const cookies = document.cookie.split(';');
+    let cookiesCleared = 0;
+    cookies.forEach(cookie => {
+      const cookieName = cookie.split('=')[0].trim();
+      if (cookieName && (
+        cookieName.startsWith('oc-lcw-') ||
+        cookieName.includes('Omnichannel') ||
+        cookieName.includes('livechat') ||
+        cookieName.includes('reconnect') ||
+        cookieName.includes('conversation')
+      )) {
+        console.log('[Auth] 🔥 Clearing cookie:', cookieName);
+        document.cookie = cookieName + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        cookiesCleared++;
+      }
+    });
+    console.log(`[Auth] 🔥 Cleared ${cookiesCleared} cookies`);
   }
 })();
 
@@ -588,6 +607,36 @@ function clearChatStorage() {
     console.log(`[Auth] ✅ Cleared ${clearedCount} sessionStorage items`);
   } catch (e) {
     console.warn('[Auth] Could not clear sessionStorage:', e);
+  }
+
+  // Clear cookies
+  try {
+    console.log('[Auth] Clearing cookies...');
+    const cookies = document.cookie.split(';');
+    let cookiesCleared = 0;
+
+    cookies.forEach(cookie => {
+      const cookieName = cookie.split('=')[0].trim();
+      if (cookieName && (
+        cookieName.startsWith('oc-lcw-') ||
+        cookieName.includes('Omnichannel') ||
+        cookieName.includes('livechat') ||
+        cookieName.includes('reconnect') ||
+        cookieName.includes('conversation') ||
+        cookieName.includes('chatToken')
+      )) {
+        console.log('[Auth] ✅ Clearing cookie:', cookieName);
+        // Clear cookie for all paths and domains
+        document.cookie = cookieName + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = cookieName + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname + ';';
+        document.cookie = cookieName + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.' + window.location.hostname + ';';
+        cookiesCleared++;
+      }
+    });
+
+    console.log(`[Auth] ✅ Cleared ${cookiesCleared} cookies`);
+  } catch (e) {
+    console.warn('[Auth] Could not clear cookies:', e);
   }
 
   // Also clear IndexedDB databases used by Omnichannel
