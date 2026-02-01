@@ -133,7 +133,15 @@ function logout() {
 
   // Save current page to return to after logout
   const currentPage = window.location.href;
+  const currentPath = window.location.pathname;
   localStorage.setItem('auth-logout-return-url', currentPage);
+
+  // Mark that we need to clear chat storage after logout redirect
+  // Store which page type to determine what to clear
+  if (currentPath.includes('support-auth.html') || currentPath.includes('reconnect.html')) {
+    localStorage.setItem('auth-clear-chat-on-return', 'true');
+    console.log('[Auth] Marked chat for clearing after logout');
+  }
 
   // Trigger logout event for pages to handle (e.g., clear chat for authenticated chat pages)
   const logoutEvent = new CustomEvent('auth:logout', {
@@ -318,6 +326,17 @@ async function handleAuthRedirect() {
       if (logoutReturnUrl) {
         console.log('[Auth] Returned from logout redirect');
         localStorage.removeItem('auth-logout-return-url');
+
+        // Check if we need to clear chat storage
+        const shouldClearChat = localStorage.getItem('auth-clear-chat-on-return');
+        if (shouldClearChat === 'true') {
+          console.log('[Auth] Clearing chat storage after logout...');
+          localStorage.removeItem('auth-clear-chat-on-return');
+
+          // Clear all chat-related storage
+          clearChatStorage();
+        }
+
         // Already on the correct page, just update UI
         updateAuthUI();
         return;
@@ -366,6 +385,51 @@ function getCurrentUser() {
 function isAuthenticated() {
   const accounts = msalInstance.getAllAccounts();
   return accounts.length > 0 && currentAccessToken && !isTokenExpired();
+}
+
+// Clear chat storage (for authenticated and reconnect chat pages)
+function clearChatStorage() {
+  console.log('[Auth] clearChatStorage() called');
+
+  // Clear localStorage
+  try {
+    const localStorageKeys = Object.keys(localStorage);
+    let clearedCount = 0;
+    localStorageKeys.forEach(key => {
+      if (key.startsWith('oc-lcw-') ||
+          key.includes('Omnichannel') ||
+          key.includes('livechat') ||
+          key.includes('reconnectId') ||
+          key.includes('chatToken')) {
+        localStorage.removeItem(key);
+        clearedCount++;
+        console.log('[Auth] Cleared localStorage key:', key);
+      }
+    });
+    console.log(`[Auth] Cleared ${clearedCount} localStorage items`);
+  } catch (e) {
+    console.warn('[Auth] Could not clear localStorage:', e);
+  }
+
+  // Clear sessionStorage
+  try {
+    const sessionStorageKeys = Object.keys(sessionStorage);
+    let clearedCount = 0;
+    sessionStorageKeys.forEach(key => {
+      if (key.startsWith('oc-lcw-') ||
+          key.includes('Omnichannel') ||
+          key.includes('livechat') ||
+          key.includes('reconnectId') ||
+          key.includes('chatToken')) {
+        sessionStorage.removeItem(key);
+        clearedCount++;
+        console.log('[Auth] Cleared sessionStorage key:', key);
+      }
+    });
+    console.log(`[Auth] Cleared ${clearedCount} sessionStorage items`);
+  } catch (e) {
+    console.warn('[Auth] Could not clear sessionStorage:', e);
+  }
 }
 
 // Initialize authentication on page load
