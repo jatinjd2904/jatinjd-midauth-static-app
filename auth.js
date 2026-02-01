@@ -420,6 +420,8 @@ function clearChatStorage() {
   // Clear localStorage
   try {
     const localStorageKeys = Object.keys(localStorage);
+    console.log('[Auth] 📋 Total localStorage keys found:', localStorageKeys.length);
+    console.log('[Auth] 📋 All localStorage keys:', localStorageKeys);
     let clearedCount = 0;
 
     localStorageKeys.forEach(key => {
@@ -455,14 +457,22 @@ function clearChatStorage() {
 
       if (shouldClear) {
         const value = localStorage.getItem(key);
-        console.log('[Auth] Clearing localStorage key:', key);
+        console.log('[Auth] ✅ CLEARING localStorage key:', key);
         console.log('[Auth] Key value (first 200 chars):', value ? value.substring(0, 200) : 'null');
         localStorage.removeItem(key);
         clearedCount++;
       }
     });
 
-    console.log(`[Auth] Cleared ${clearedCount} localStorage items`);
+    if (clearedCount === 0) {
+      console.log('[Auth] ⚠️ WARNING: No localStorage items matched clearing criteria');
+      console.log('[Auth] This could mean:');
+      console.log('[Auth] 1. Chat storage uses different key names than expected');
+      console.log('[Auth] 2. Storage was already cleared');
+      console.log('[Auth] 3. No chat session existed yet');
+    }
+
+    console.log(`[Auth] ✅ Cleared ${clearedCount} localStorage items`);
   } catch (e) {
     console.warn('[Auth] Could not clear localStorage:', e);
   }
@@ -470,6 +480,8 @@ function clearChatStorage() {
   // Clear sessionStorage
   try {
     const sessionStorageKeys = Object.keys(sessionStorage);
+    console.log('[Auth] 📋 Total sessionStorage keys found:', sessionStorageKeys.length);
+    console.log('[Auth] 📋 All sessionStorage keys:', sessionStorageKeys);
     let clearedCount = 0;
 
     sessionStorageKeys.forEach(key => {
@@ -503,13 +515,17 @@ function clearChatStorage() {
       }
 
       if (shouldClear) {
-        console.log('[Auth] Clearing sessionStorage key:', key);
+        console.log('[Auth] ✅ CLEARING sessionStorage key:', key);
         sessionStorage.removeItem(key);
         clearedCount++;
       }
     });
 
-    console.log(`[Auth] Cleared ${clearedCount} sessionStorage items`);
+    if (clearedCount === 0) {
+      console.log('[Auth] ⚠️ WARNING: No sessionStorage items matched clearing criteria');
+    }
+
+    console.log(`[Auth] ✅ Cleared ${clearedCount} sessionStorage items`);
   } catch (e) {
     console.warn('[Auth] Could not clear sessionStorage:', e);
   }
