@@ -1,3 +1,36 @@
+// CRITICAL: Clear chat storage IMMEDIATELY on page load if flag is set
+// This must happen BEFORE any widget initialization
+(function() {
+  const shouldClearChat = localStorage.getItem('auth-clear-chat-on-return');
+  if (shouldClearChat === 'true') {
+    console.log('[Auth] 🔥 IMMEDIATE STORAGE CLEARING - Before widget init');
+
+    // Helper to check MD5 hash
+    const isMD5Hash = (str) => /^[a-f0-9]{32}$/i.test(str);
+
+    // Clear localStorage immediately
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (
+        key.startsWith('oc-lcw-') ||
+        key.includes('Omnichannel') ||
+        key.includes('livechat') ||
+        isMD5Hash(key)
+      )) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach(key => {
+      console.log('[Auth] 🔥 Immediate clear:', key);
+      localStorage.removeItem(key);
+    });
+
+    console.log(`[Auth] 🔥 Immediately cleared ${keysToRemove.length} items`);
+  }
+})();
+
 // MSAL Configuration
 const msalConfig = {
   auth: {

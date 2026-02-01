@@ -96,6 +96,36 @@
 
   <!-- Widget Management Script -->
   <script>
+    // CRITICAL: Check and clear storage immediately if returning from logout
+    (function() {
+      const shouldClearChat = localStorage.getItem('auth-clear-chat-on-return');
+      if (shouldClearChat === 'true') {
+        console.log('[Widget] 🔥 IMMEDIATE storage clear on page load (before widget init)');
+
+        const isMD5Hash = (str) => /^[a-f0-9]{32}$/i.test(str);
+        const keysToRemove = [];
+
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (
+            key.startsWith('oc-lcw-') ||
+            key.includes('Omnichannel') ||
+            key.includes('livechat') ||
+            isMD5Hash(key)
+          )) {
+            keysToRemove.push(key);
+          }
+        }
+
+        keysToRemove.forEach(key => {
+          console.log('[Widget] 🔥 Clearing:', key);
+          localStorage.removeItem(key);
+        });
+
+        console.log(`[Widget] 🔥 Cleared ${keysToRemove.length} items before widget init`);
+      }
+    })();
+
     let widgetLoaded = false;
 
     // Function to send mid-auth token to widget
