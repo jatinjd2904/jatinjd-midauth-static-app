@@ -417,6 +417,11 @@ function clearChatStorage() {
   console.log('========================================');
   console.log('');
 
+  // Helper function to check if a string is an MD5 hash (32 hex characters)
+  const isMD5Hash = (str) => {
+    return /^[a-f0-9]{32}$/i.test(str);
+  };
+
   // Clear localStorage
   try {
     const localStorageKeys = Object.keys(localStorage);
@@ -434,19 +439,30 @@ function clearChatStorage() {
           key.includes('reconnectId') ||
           key.includes('chatToken')) {
         shouldClear = true;
+        console.log('[Auth] 🎯 Standard Omnichannel key detected:', key);
       }
 
-      // Check for keys containing liveChatContext in their value
+      // Check if the key itself is an MD5 hash (widget cache ID)
+      if (!shouldClear && isMD5Hash(key)) {
+        console.log('[Auth] 🎯 MD5 hash key detected (potential widget state):', key);
+        shouldClear = true;
+      }
+
+      // Check for keys containing widget state data in their value
       if (!shouldClear) {
         try {
           const value = localStorage.getItem(key);
-          if (value && typeof value === 'string') {
-            // Check if the value contains liveChatContext or domainStates
+          if (value && typeof value === 'string' && value.length > 0) {
+            // Check if the value contains widget state indicators
             if (value.includes('liveChatContext') ||
                 value.includes('domainStates') ||
+                value.includes('appStates') ||
+                value.includes('reconnectId') ||
+                value.includes('conversationState') ||
                 value.includes('conversationId') ||
-                value.includes('chatId')) {
-              console.log('[Auth] Found chat context in key:', key);
+                value.includes('chatId') ||
+                value.includes('chatToken')) {
+              console.log('[Auth] 🎯 Found widget state data in key:', key);
               shouldClear = true;
             }
           }
@@ -494,18 +510,29 @@ function clearChatStorage() {
           key.includes('reconnectId') ||
           key.includes('chatToken')) {
         shouldClear = true;
+        console.log('[Auth] 🎯 Standard Omnichannel key in sessionStorage:', key);
       }
 
-      // Check for keys containing liveChatContext in their value
+      // Check if the key itself is an MD5 hash (widget cache ID)
+      if (!shouldClear && isMD5Hash(key)) {
+        console.log('[Auth] 🎯 MD5 hash key detected in sessionStorage:', key);
+        shouldClear = true;
+      }
+
+      // Check for keys containing widget state data in their value
       if (!shouldClear) {
         try {
           const value = sessionStorage.getItem(key);
-          if (value && typeof value === 'string') {
+          if (value && typeof value === 'string' && value.length > 0) {
             if (value.includes('liveChatContext') ||
                 value.includes('domainStates') ||
+                value.includes('appStates') ||
+                value.includes('reconnectId') ||
+                value.includes('conversationState') ||
                 value.includes('conversationId') ||
-                value.includes('chatId')) {
-              console.log('[Auth] Found chat context in sessionStorage key:', key);
+                value.includes('chatId') ||
+                value.includes('chatToken')) {
+              console.log('[Auth] 🎯 Found widget state data in sessionStorage key:', key);
               shouldClear = true;
             }
           }
