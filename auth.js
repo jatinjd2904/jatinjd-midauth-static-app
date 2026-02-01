@@ -395,17 +395,47 @@ function clearChatStorage() {
   try {
     const localStorageKeys = Object.keys(localStorage);
     let clearedCount = 0;
+
     localStorageKeys.forEach(key => {
+      let shouldClear = false;
+
+      // Check for standard Omnichannel keys
       if (key.startsWith('oc-lcw-') ||
           key.includes('Omnichannel') ||
           key.includes('livechat') ||
           key.includes('reconnectId') ||
           key.includes('chatToken')) {
+        shouldClear = true;
+      }
+
+      // Check for keys containing liveChatContext in their value
+      if (!shouldClear) {
+        try {
+          const value = localStorage.getItem(key);
+          if (value && typeof value === 'string') {
+            // Check if the value contains liveChatContext or domainStates
+            if (value.includes('liveChatContext') ||
+                value.includes('domainStates') ||
+                value.includes('conversationId') ||
+                value.includes('chatId')) {
+              console.log('[Auth] Found chat context in key:', key);
+              shouldClear = true;
+            }
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+
+      if (shouldClear) {
+        const value = localStorage.getItem(key);
+        console.log('[Auth] Clearing localStorage key:', key);
+        console.log('[Auth] Key value (first 200 chars):', value ? value.substring(0, 200) : 'null');
         localStorage.removeItem(key);
         clearedCount++;
-        console.log('[Auth] Cleared localStorage key:', key);
       }
     });
+
     console.log(`[Auth] Cleared ${clearedCount} localStorage items`);
   } catch (e) {
     console.warn('[Auth] Could not clear localStorage:', e);
@@ -415,20 +445,73 @@ function clearChatStorage() {
   try {
     const sessionStorageKeys = Object.keys(sessionStorage);
     let clearedCount = 0;
+
     sessionStorageKeys.forEach(key => {
+      let shouldClear = false;
+
+      // Check for standard Omnichannel keys
       if (key.startsWith('oc-lcw-') ||
           key.includes('Omnichannel') ||
           key.includes('livechat') ||
           key.includes('reconnectId') ||
           key.includes('chatToken')) {
+        shouldClear = true;
+      }
+
+      // Check for keys containing liveChatContext in their value
+      if (!shouldClear) {
+        try {
+          const value = sessionStorage.getItem(key);
+          if (value && typeof value === 'string') {
+            if (value.includes('liveChatContext') ||
+                value.includes('domainStates') ||
+                value.includes('conversationId') ||
+                value.includes('chatId')) {
+              console.log('[Auth] Found chat context in sessionStorage key:', key);
+              shouldClear = true;
+            }
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+
+      if (shouldClear) {
+        console.log('[Auth] Clearing sessionStorage key:', key);
         sessionStorage.removeItem(key);
         clearedCount++;
-        console.log('[Auth] Cleared sessionStorage key:', key);
       }
     });
+
     console.log(`[Auth] Cleared ${clearedCount} sessionStorage items`);
   } catch (e) {
     console.warn('[Auth] Could not clear sessionStorage:', e);
+  }
+
+  // Also clear IndexedDB databases used by Omnichannel
+  if (window.indexedDB) {
+    try {
+      console.log('[Auth] Attempting to clear IndexedDB databases...');
+
+      // Common Omnichannel IndexedDB names
+      const dbNamesToDelete = [
+        'msal.db',
+        'OmnichannelDB',
+        'LiveChatWidgetDB'
+      ];
+
+      dbNamesToDelete.forEach(dbName => {
+        const deleteRequest = window.indexedDB.deleteDatabase(dbName);
+        deleteRequest.onsuccess = () => {
+          console.log(`[Auth] Deleted IndexedDB: ${dbName}`);
+        };
+        deleteRequest.onerror = () => {
+          console.log(`[Auth] Could not delete IndexedDB: ${dbName} (may not exist)`);
+        };
+      });
+    } catch (e) {
+      console.warn('[Auth] Could not clear IndexedDB:', e);
+    }
   }
 }
 
