@@ -29,20 +29,28 @@ jatinjd-midauth-static-app/
 
 ### 1. Home (index.html)
 - Welcome page explaining the application
-- Links to both support pages
+- Links to all support pages
 - Displays current user info if authenticated
 
 ### 2. Support (Authenticated Chat) - support-auth.html
 - Displays **Widget 1**: Authenticated chat configuration
 - Accessible to everyone (auth is optional)
 - Auto-upgrades to authenticated mode when user logs in
-- App ID: `9c155eb8-61cc-41ff-9433-16355ce73ed2`
+- App ID: `1e27fef0-15f7-4202-bf85-f736d6c67735`
 
 ### 3. Support (Unauthenticated Chat) - support-unauth.html
 - Displays **Widget 2**: Unauthenticated chat configuration
 - Accessible to everyone (auth is optional)
 - Works anonymously, upgrades to authenticated if user logs in
 - App ID: `50fbd2aa-1a19-475f-aeb6-59c8d15c8387`
+
+### 4. Reconnect Scenarios (reconnect.html)
+- Interactive testing page for chat reconnect scenarios
+- Test authenticated and unauthenticated reconnect behavior
+- Mid-authentication testing during active chat
+- Cross-tab session sharing tests
+- Chat storage inspector to view browser storage
+- App ID: `45b31cc0-54fa-4c39-ab97-c95e068f416b`
 
 ## Authentication Flow
 
@@ -96,13 +104,19 @@ const tokenRequest = {
 ## Widget Configuration
 
 ### Widget 1 (Authenticated Chat)
-- **App ID**: `9c155eb8-61cc-41ff-9433-16355ce73ed2`
+- **App ID**: `1e27fef0-15f7-4202-bf85-f736d6c67735`
 - **Org ID**: `1e9d7bbe-facf-f011-8537-000d3a59231e`
 - **Org URL**: `https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com`
 - **Script URL**: `https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js`
 
 ### Widget 2 (Unauthenticated Chat)
 - **App ID**: `50fbd2aa-1a19-475f-aeb6-59c8d15c8387`
+- **Org ID**: `1e9d7bbe-facf-f011-8537-000d3a59231e`
+- **Org URL**: `https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com`
+- **Script URL**: `https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js`
+
+### Widget 3 (Reconnect Test Chat)
+- **App ID**: `45b31cc0-54fa-4c39-ab97-c95e068f416b`
 - **Org ID**: `1e9d7bbe-facf-f011-8537-000d3a59231e`
 - **Org URL**: `https://m-1e9d7bbe-facf-f011-8537-000d3a59231e.preprod.omnichannelengagementhub.com`
 - **Script URL**: `https://msft-lcw-trial.azureedge.net/jatinjdd/0123/v2scripts/LiveChatBootstrapper.js`
