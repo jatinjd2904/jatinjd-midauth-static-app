@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chat Reconnect Scenarios - Power Pages Auth Demo</title>
+  <title>Support (Reconnect) - Power Pages Auth Demo</title>
   <link rel="stylesheet" href="styles.css">
   <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 </head>
@@ -15,7 +15,7 @@
         <a href="index.html">Home</a>
         <a href="support-auth.html">Support (Authenticated)</a>
         <a href="support-unauth.html">Support (Unauthenticated)</a>
-        <a href="reconnect.html">Reconnect Scenarios</a>
+        <a href="reconnect.html">Support (Reconnect)</a>
       </nav>
       <div class="auth-section">
         <span class="user-info" id="user-info-text"></span>
@@ -26,108 +26,28 @@
 
   <!-- Main Content -->
   <main class="container">
-    <h1 class="page-title">Chat Reconnect Scenarios</h1>
+    <h1 class="page-title">Support (Reconnect Chat)</h1>
     <p class="page-description">
-      This page helps you test and understand different chat reconnection scenarios with authentication.
-      Test how the widget behaves when users reconnect after logout, page refresh, or login during an active session.
+      This page displays a reconnect chat widget. You can access this page whether you're logged in or not.
+      If you log in during your chat session, the widget will be upgraded to authenticated mode using mid-authentication.
     </p>
 
-    <!-- Reconnect Scenarios Info -->
-    <div class="info-box">
-      <h3>Understanding Reconnect Scenarios</h3>
+    <!-- Info Box -->
+    <div class="info-box info">
+      <h3>About This Widget</h3>
       <p>
-        Chat widgets can reconnect to previous sessions using data stored in browser storage (localStorage).
-        The reconnect behavior depends on whether the chat is authenticated or unauthenticated.
-      </p>
-      <p style="margin-top: 10px;">
-        <strong>Default Widget on This Page:</strong> The reconnect test widget (App ID: 45b31cc0-54fa-4c39-ab97-c95e068f416b)
-        behaves like an <strong>authenticated chat widget</strong> - it will clear chat context on logout.
+        This widget supports chat reconnection. When you log in while chatting, the SDK will automatically
+        call <code>setMidAuthToken()</code> to upgrade your session to authenticated mode.
       </p>
     </div>
 
-    <!-- Scenario Cards -->
-    <div class="card">
-      <h2>📋 Scenario 1: Authenticated Chat Reconnect</h2>
-      <p><strong>Widget Type:</strong> Authenticated Chat</p>
-      <p><strong>Test Steps:</strong></p>
-      <ol style="margin-left: 20px; line-height: 1.8;">
-        <li>Login to your account</li>
-        <li>Load the authenticated chat widget below</li>
-        <li>Start a chat conversation</li>
-        <li>Refresh the page (F5)</li>
-        <li><strong>Expected:</strong> Chat should reconnect automatically while logged in</li>
-        <li>Now click "Logout"</li>
-        <li><strong>Expected:</strong> Chat context is cleared, cannot reconnect to same session</li>
-      </ol>
-      <div class="button-group" style="margin-top: 15px;">
-        <button class="btn btn-primary" onclick="loadScenario1()">Load Authenticated Chat</button>
-        <button class="btn btn-secondary" onclick="testReconnectScenario1()">Test Reconnect</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>📋 Scenario 2: Unauthenticated Chat Reconnect</h2>
-      <p><strong>Widget Type:</strong> Unauthenticated Chat</p>
-      <p><strong>Test Steps:</strong></p>
-      <ol style="margin-left: 20px; line-height: 1.8;">
-        <li>Load the unauthenticated chat widget below (no login required)</li>
-        <li>Start an anonymous chat conversation</li>
-        <li>Refresh the page (F5)</li>
-        <li><strong>Expected:</strong> Chat should reconnect automatically</li>
-        <li>Now login to your account</li>
-        <li><strong>Expected:</strong> Chat remains connected, session continues (mid-auth applied)</li>
-        <li>Now logout</li>
-        <li><strong>Expected:</strong> Chat remains connected, can still reconnect to same anonymous session</li>
-      </ol>
-      <div class="button-group" style="margin-top: 15px;">
-        <button class="btn btn-primary" onclick="loadScenario2()">Load Unauthenticated Chat</button>
-        <button class="btn btn-secondary" onclick="testReconnectScenario2()">Test Reconnect</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>📋 Scenario 3: Mid-Authentication During Chat</h2>
-      <p><strong>Widget Type:</strong> Authenticated Chat</p>
-      <p><strong>Test Steps:</strong></p>
-      <ol style="margin-left: 20px; line-height: 1.8;">
-        <li>Ensure you are logged OUT</li>
-        <li>Load the authenticated chat widget below</li>
-        <li>Start a chat conversation (unauthenticated mode)</li>
-        <li>While chat is active, click "Login"</li>
-        <li><strong>Expected:</strong> After login redirect, widget reloads and calls setMidAuthToken()</li>
-        <li><strong>Expected:</strong> Chat session is upgraded to authenticated mode</li>
-      </ol>
-      <div class="button-group" style="margin-top: 15px;">
-        <button class="btn btn-primary" onclick="loadScenario3()">Load Authenticated Chat</button>
-        <button class="btn btn-warning" onclick="clearAllChatStorage()">Clear All Chat Storage</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>📋 Scenario 4: Cross-Tab Session Sharing</h2>
-      <p><strong>Widget Type:</strong> Both</p>
-      <p><strong>Test Steps:</strong></p>
-      <ol style="margin-left: 20px; line-height: 1.8;">
-        <li>Open this page in Tab 1</li>
-        <li>Load a chat widget and start a conversation</li>
-        <li>Open the same page in Tab 2 (new tab)</li>
-        <li>Load the same chat widget</li>
-        <li><strong>Expected:</strong> Tab 2 should reconnect to the same chat session from Tab 1</li>
-        <li>Close Tab 1, continue chatting in Tab 2</li>
-        <li><strong>Expected:</strong> Chat continues seamlessly</li>
-      </ol>
-      <div class="button-group" style="margin-top: 15px;">
-        <button class="btn btn-primary" onclick="window.open(window.location.href, '_blank')">Open in New Tab</button>
-      </div>
+    <div class="info-box warning">
+      <strong>Note:</strong> This page is accessible to everyone. Login is optional.
     </div>
 
     <!-- Widget Configuration Section -->
     <div class="widget-config-section">
       <h2>Chat Widget Configuration</h2>
-
-      <div class="info-box info">
-        <strong>Current Mode:</strong> <span id="current-mode">None</span>
-      </div>
 
       <div class="form-group">
         <label for="widget-appId">App ID:</label>
@@ -156,22 +76,6 @@
       </div>
     </div>
 
-    <!-- Chat Storage Inspector -->
-    <div class="widget-config-section">
-      <h2>Chat Storage Inspector</h2>
-      <p>View and manage chat-related data stored in your browser.</p>
-
-      <div class="button-group">
-        <button class="btn btn-primary" onclick="inspectChatStorage()">Inspect Storage</button>
-        <button class="btn btn-danger" onclick="clearAllChatStorage()">Clear All Chat Storage</button>
-      </div>
-
-      <div id="storage-inspector" class="widget-status" style="display: none;">
-        <h3>Storage Contents:</h3>
-        <pre id="storage-inspector-text"></pre>
-      </div>
-    </div>
-
     <!-- Widget Status -->
     <div id="widget-status" class="widget-status">
       <h3>Widget Status:</h3>
@@ -193,23 +97,6 @@
   <!-- Widget Management Script -->
   <script>
     let widgetLoaded = false;
-    let currentScenario = null;
-
-    // Scenario configurations
-    const scenarios = {
-      authenticated: {
-        appId: '1e27fef0-15f7-4202-bf85-f736d6c67735',
-        name: 'Authenticated Chat'
-      },
-      unauthenticated: {
-        appId: '50fbd2aa-1a19-475f-aeb6-59c8d15c8387',
-        name: 'Unauthenticated Chat'
-      },
-      reconnect: {
-        appId: '45b31cc0-54fa-4c39-ab97-c95e068f416b',
-        name: 'Reconnect Test Chat'
-      }
-    };
 
     // Function to send mid-auth token to widget
     function sendMidAuthToken() {
@@ -247,154 +134,6 @@
         console.error('[MidAuth] Error setting mid-auth token:', error);
         return false;
       }
-    }
-
-    function loadScenario1() {
-      console.log('[Scenario] Loading Scenario 1: Authenticated Chat Reconnect');
-      document.getElementById('widget-appId').value = scenarios.authenticated.appId;
-      currentScenario = 'authenticated';
-      document.getElementById('current-mode').textContent = scenarios.authenticated.name;
-      loadWidget();
-    }
-
-    function loadScenario2() {
-      console.log('[Scenario] Loading Scenario 2: Unauthenticated Chat Reconnect');
-      document.getElementById('widget-appId').value = scenarios.unauthenticated.appId;
-      currentScenario = 'unauthenticated';
-      document.getElementById('current-mode').textContent = scenarios.unauthenticated.name;
-      loadWidget();
-    }
-
-    function loadScenario3() {
-      console.log('[Scenario] Loading Scenario 3: Mid-Authentication');
-      document.getElementById('widget-appId').value = scenarios.authenticated.appId;
-      currentScenario = 'mid-auth';
-      document.getElementById('current-mode').textContent = 'Mid-Authentication Test';
-      loadWidget();
-    }
-
-    function testReconnectScenario1() {
-      if (!widgetLoaded) {
-        alert('Please load the widget first!');
-        return;
-      }
-
-      if (!isAuthenticated()) {
-        alert('⚠️ Please login first to test authenticated chat reconnect!');
-        return;
-      }
-
-      inspectChatStorage();
-      alert('📋 Scenario 1 Test:\n\n1. Check the storage inspector below\n2. Refresh the page (F5)\n3. Widget should reconnect while logged in\n4. Logout and try refreshing again\n5. Widget should NOT reconnect (storage cleared)');
-    }
-
-    function testReconnectScenario2() {
-      if (!widgetLoaded) {
-        alert('Please load the widget first!');
-        return;
-      }
-
-      inspectChatStorage();
-      alert('📋 Scenario 2 Test:\n\n1. Check the storage inspector below\n2. Refresh the page (F5)\n3. Widget should reconnect\n4. Login/Logout and refresh again\n5. Widget should STILL reconnect (storage preserved)');
-    }
-
-    function inspectChatStorage() {
-      const storageData = {
-        localStorage: {},
-        sessionStorage: {}
-      };
-
-      // Inspect localStorage
-      try {
-        const localStorageKeys = Object.keys(localStorage);
-        localStorageKeys.forEach(key => {
-          if (key.startsWith('oc-lcw-') ||
-              key.includes('Omnichannel') ||
-              key.includes('livechat') ||
-              key.includes('reconnectId') ||
-              key.includes('chatToken')) {
-            storageData.localStorage[key] = localStorage.getItem(key).substring(0, 100) + '...';
-          }
-        });
-      } catch (e) {
-        storageData.localStorage.error = e.message;
-      }
-
-      // Inspect sessionStorage
-      try {
-        const sessionStorageKeys = Object.keys(sessionStorage);
-        sessionStorageKeys.forEach(key => {
-          if (key.startsWith('oc-lcw-') ||
-              key.includes('Omnichannel') ||
-              key.includes('livechat') ||
-              key.includes('reconnectId') ||
-              key.includes('chatToken')) {
-            storageData.sessionStorage[key] = sessionStorage.getItem(key).substring(0, 100) + '...';
-          }
-        });
-      } catch (e) {
-        storageData.sessionStorage.error = e.message;
-      }
-
-      // Display
-      const inspectorDiv = document.getElementById('storage-inspector');
-      const inspectorText = document.getElementById('storage-inspector-text');
-
-      if (inspectorDiv && inspectorText) {
-        inspectorDiv.style.display = 'block';
-        inspectorText.textContent = JSON.stringify(storageData, null, 2);
-      }
-
-      console.log('[Storage Inspector]', storageData);
-    }
-
-    function clearAllChatStorage() {
-      if (!confirm('Are you sure you want to clear all chat storage? This will disconnect any active sessions.')) {
-        return;
-      }
-
-      console.log('[Storage] Clearing all chat storage...');
-
-      // Clear localStorage
-      try {
-        const localStorageKeys = Object.keys(localStorage);
-        let clearedCount = 0;
-        localStorageKeys.forEach(key => {
-          if (key.startsWith('oc-lcw-') ||
-              key.includes('Omnichannel') ||
-              key.includes('livechat') ||
-              key.includes('reconnectId') ||
-              key.includes('chatToken')) {
-            localStorage.removeItem(key);
-            clearedCount++;
-          }
-        });
-        console.log(`[Storage] Cleared ${clearedCount} localStorage items`);
-      } catch (e) {
-        console.warn('[Storage] Could not clear localStorage:', e);
-      }
-
-      // Clear sessionStorage
-      try {
-        const sessionStorageKeys = Object.keys(sessionStorage);
-        let clearedCount = 0;
-        sessionStorageKeys.forEach(key => {
-          if (key.startsWith('oc-lcw-') ||
-              key.includes('Omnichannel') ||
-              key.includes('livechat') ||
-              key.includes('reconnectId') ||
-              key.includes('chatToken')) {
-            sessionStorage.removeItem(key);
-            clearedCount++;
-          }
-        });
-        console.log(`[Storage] Cleared ${clearedCount} sessionStorage items`);
-      } catch (e) {
-        console.warn('[Storage] Could not clear sessionStorage:', e);
-      }
-
-      alert('✅ All chat storage cleared! Refresh the page to start fresh.');
-      inspectChatStorage();
     }
 
     function loadWidget() {
@@ -442,18 +181,13 @@
       widgetLoaded = true;
 
       console.log('[Widget] Widget loaded successfully');
-      showWidgetStatus(`Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}\nScenario: ${currentScenario || 'Manual'}`);
+      showWidgetStatus(`Widget loaded successfully!\nApp ID: ${appId}\nOrg ID: ${orgId}`);
 
       // Set up mid-auth token listener
       setupMidAuthTokenListener();
 
       // Save configuration
       saveCurrentFormValues();
-
-      // Inspect storage after a delay
-      setTimeout(() => {
-        inspectChatStorage();
-      }, 2000);
     }
 
     function setupMidAuthTokenListener() {
@@ -478,7 +212,7 @@
             } else {
               console.error('[MidAuth] ❌ Failed to send token');
             }
-          }, 3000);
+          }, 3000); // 3 second delay for chat restoration
         } else if (currentAccessToken && !isTokenExpired()) {
           // User was already logged in when widget loaded
           console.log('[MidAuth] User already logged in - setting up token for existing chat');
@@ -528,6 +262,38 @@
         console.log('[Widget] Widget script removed');
       }
 
+      // Clean up localStorage
+      try {
+        const localStorageKeys = Object.keys(localStorage);
+        localStorageKeys.forEach(key => {
+          if (key.startsWith('oc-lcw-') ||
+              key.includes('Omnichannel') ||
+              key.includes('livechat') ||
+              key.includes('reconnectId') ||
+              key.includes('chatToken')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.warn('[Widget] Could not clean up localStorage:', e);
+      }
+
+      // Clean up sessionStorage
+      try {
+        const sessionStorageKeys = Object.keys(sessionStorage);
+        sessionStorageKeys.forEach(key => {
+          if (key.startsWith('oc-lcw-') ||
+              key.includes('Omnichannel') ||
+              key.includes('livechat') ||
+              key.includes('reconnectId') ||
+              key.includes('chatToken')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.warn('[Widget] Could not clean up sessionStorage:', e);
+      }
+
       // Clean up global window objects
       try {
         if (window.Microsoft && window.Microsoft.Omnichannel) {
@@ -546,10 +312,8 @@
       widgetLoaded = false;
       chatRestored = false;
       pendingMidAuthToken = null;
-      currentScenario = null;
-      document.getElementById('current-mode').textContent = 'None';
-      showWidgetStatus('Widget removed successfully. Storage remains intact for reconnect testing.');
-      console.log('[Widget] Widget removed (storage preserved)');
+      showWidgetStatus('Widget removed successfully. You can now load a different widget configuration.');
+      console.log('[Widget] Widget cleanup complete');
     }
 
     async function hardReload() {
@@ -560,9 +324,6 @@
 
       // Remove widget first
       removeWidget();
-
-      // Clear all chat storage
-      clearAllChatStorage();
 
       // Clear all caches
       if ('caches' in window) {
@@ -591,10 +352,10 @@
         statusDiv.classList.add('show');
         statusText.textContent = message;
 
-        // Auto-hide after 8 seconds (longer for this page)
+        // Auto-hide after 5 seconds
         setTimeout(() => {
           statusDiv.classList.remove('show');
-        }, 8000);
+        }, 5000);
       }
     }
 
@@ -603,8 +364,7 @@
         appId: document.getElementById('widget-appId').value,
         orgId: document.getElementById('widget-orgId').value,
         orgUrl: document.getElementById('widget-orgUrl').value,
-        scriptUrl: document.getElementById('widget-scriptUrl').value,
-        scenario: currentScenario
+        scriptUrl: document.getElementById('widget-scriptUrl').value
       };
       localStorage.setItem('widget-config-reconnect', JSON.stringify(formData));
       console.log('[Widget] Form values saved to localStorage');
@@ -621,12 +381,6 @@
           document.getElementById('widget-orgId').value = formData.orgId;
           document.getElementById('widget-orgUrl').value = formData.orgUrl;
           document.getElementById('widget-scriptUrl').value = formData.scriptUrl;
-          currentScenario = formData.scenario || null;
-
-          if (currentScenario) {
-            const scenarioName = scenarios[currentScenario]?.name || currentScenario;
-            document.getElementById('current-mode').textContent = scenarioName;
-          }
 
           console.log('[Widget] Form values restored successfully');
         } catch (e) {
@@ -678,52 +432,45 @@
       saveCurrentFormValues();
     });
 
-    // Listen for logout event - clear chat context for authenticated scenarios
+    // Listen for logout event to clear chat context (reconnect widget behaves like authenticated chat)
     window.addEventListener('auth:logout', function(event) {
-      console.log('[Reconnect Page] Logout detected - scenario:', currentScenario);
+      console.log('[Widget] Logout detected - clearing reconnect chat context');
 
-      // For reconnect testing, we treat the default widget and authenticated scenarios the same
-      // They both clear chat context on logout (similar to authenticated chat behavior)
-      if (currentScenario === 'authenticated' || currentScenario === 'mid-auth' || !currentScenario) {
-        console.log('[Reconnect Page] Clearing chat context (authenticated behavior)');
+      // Clear chat widget context for reconnect chat
+      // This prevents user from reconnecting to the same session after logout
+      try {
+        const localStorageKeys = Object.keys(localStorage);
+        let clearedCount = 0;
+        localStorageKeys.forEach(key => {
+          if (key.startsWith('oc-lcw-') ||
+              key.includes('Omnichannel') ||
+              key.includes('livechat') ||
+              key.includes('reconnectId') ||
+              key.includes('chatToken')) {
+            localStorage.removeItem(key);
+            clearedCount++;
+            console.log('[Widget] Cleared localStorage key:', key);
+          }
+        });
+        console.log(`[Widget] Cleared ${clearedCount} chat storage items for reconnect chat`);
+      } catch (e) {
+        console.warn('[Widget] Could not clear chat storage:', e);
+      }
 
-        // Clear chat storage
-        try {
-          const localStorageKeys = Object.keys(localStorage);
-          let clearedCount = 0;
-          localStorageKeys.forEach(key => {
-            if (key.startsWith('oc-lcw-') ||
-                key.includes('Omnichannel') ||
-                key.includes('livechat') ||
-                key.includes('reconnectId') ||
-                key.includes('chatToken')) {
-              localStorage.removeItem(key);
-              clearedCount++;
-            }
-          });
-          console.log(`[Reconnect Page] Cleared ${clearedCount} localStorage items`);
-        } catch (e) {
-          console.warn('[Reconnect Page] Could not clear localStorage:', e);
-        }
-
-        // Clear sessionStorage
-        try {
-          const sessionStorageKeys = Object.keys(sessionStorage);
-          sessionStorageKeys.forEach(key => {
-            if (key.startsWith('oc-lcw-') ||
-                key.includes('Omnichannel') ||
-                key.includes('livechat') ||
-                key.includes('reconnectId') ||
-                key.includes('chatToken')) {
-              sessionStorage.removeItem(key);
-            }
-          });
-        } catch (e) {
-          console.warn('[Reconnect Page] Could not clear sessionStorage:', e);
-        }
-      } else if (currentScenario === 'unauthenticated') {
-        console.log('[Reconnect Page] Preserving unauthenticated chat context');
-        // Do not clear storage for unauthenticated scenario testing
+      // Also clear sessionStorage
+      try {
+        const sessionStorageKeys = Object.keys(sessionStorage);
+        sessionStorageKeys.forEach(key => {
+          if (key.startsWith('oc-lcw-') ||
+              key.includes('Omnichannel') ||
+              key.includes('livechat') ||
+              key.includes('reconnectId') ||
+              key.includes('chatToken')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        console.warn('[Widget] Could not clear sessionStorage:', e);
       }
     });
   </script>

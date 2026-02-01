@@ -44,12 +44,11 @@ jatinjd-midauth-static-app/
 - Works anonymously, upgrades to authenticated if user logs in
 - App ID: `50fbd2aa-1a19-475f-aeb6-59c8d15c8387`
 
-### 4. Reconnect Scenarios (reconnect.html)
-- Interactive testing page for chat reconnect scenarios
-- Test authenticated and unauthenticated reconnect behavior
-- Mid-authentication testing during active chat
-- Cross-tab session sharing tests
-- Chat storage inspector to view browser storage
+### 4. Support (Reconnect) - reconnect.html
+- Displays **Widget 3**: Reconnect chat configuration
+- Accessible to everyone (auth is optional)
+- Auto-upgrades to authenticated mode when user logs in
+- Clears chat context on logout (similar to authenticated chat behavior)
 - App ID: `45b31cc0-54fa-4c39-ab97-c95e068f416b`
 
 ## Authentication Flow
