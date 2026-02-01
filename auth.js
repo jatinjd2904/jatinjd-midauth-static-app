@@ -151,19 +151,22 @@ function logout() {
     userInfoElement.innerHTML = '';
   }
 
-  // Use logoutRedirect with postLogoutRedirectUri set to current page
-  const account = msalInstance.getAllAccounts()[0];
-  if (account) {
-    msalInstance.logoutRedirect({
-      account: account,
-      postLogoutRedirectUri: currentPage
-    });
-  } else {
-    // No account found, just clear cache and reload
-    console.log('[Auth] No account found, clearing cache');
-    msalInstance.clearCache();
-    window.location.reload();
-  }
+  // IMPORTANT: Add a small delay to ensure event handlers complete before redirect
+  setTimeout(() => {
+    // Use logoutRedirect with postLogoutRedirectUri set to current page
+    const account = msalInstance.getAllAccounts()[0];
+    if (account) {
+      msalInstance.logoutRedirect({
+        account: account,
+        postLogoutRedirectUri: currentPage
+      });
+    } else {
+      // No account found, just clear cache and reload
+      console.log('[Auth] No account found, clearing cache');
+      msalInstance.clearCache();
+      window.location.reload();
+    }
+  }, 100); // 100ms delay to allow event handlers to complete
 }
 
 // Get access token silently
