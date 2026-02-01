@@ -140,7 +140,10 @@ function logout() {
   // Store which page type to determine what to clear
   if (currentPath.includes('support-auth.html') || currentPath.includes('reconnect.html')) {
     localStorage.setItem('auth-clear-chat-on-return', 'true');
-    console.log('[Auth] Marked chat for clearing after logout');
+    console.log('[Auth] ⚠️ MARKED CHAT FOR CLEARING AFTER LOGOUT - Flag set to true');
+    console.log('[Auth] Current path:', currentPath);
+  } else {
+    console.log('[Auth] Not marking for clearing - current path:', currentPath);
   }
 
   // Trigger logout event for pages to handle (e.g., clear chat for authenticated chat pages)
@@ -161,9 +164,15 @@ function logout() {
 
   // IMPORTANT: Add a small delay to ensure event handlers complete before redirect
   setTimeout(() => {
+    // Verify flag was set before redirecting
+    const flagCheck = localStorage.getItem('auth-clear-chat-on-return');
+    console.log('[Auth] 🔍 Flag check before redirect:', flagCheck);
+    console.log('[Auth] 🔍 Return URL before redirect:', localStorage.getItem('auth-logout-return-url'));
+
     // Use logoutRedirect with postLogoutRedirectUri set to current page
     const account = msalInstance.getAllAccounts()[0];
     if (account) {
+      console.log('[Auth] 🚪 Calling logoutRedirect to:', currentPage);
       msalInstance.logoutRedirect({
         account: account,
         postLogoutRedirectUri: currentPage
@@ -268,8 +277,11 @@ function updateAuthUI(account) {
 
 // Handle redirect promise on page load
 async function handleAuthRedirect() {
+  console.log('[Auth] 🚀 handleAuthRedirect() called - checking for redirects...');
+
   try {
     const response = await msalInstance.handleRedirectPromise();
+    console.log('[Auth] MSAL redirect response:', response ? 'Login response received' : 'No response');
 
     if (response) {
       console.log('[Auth] Redirect response received');
@@ -323,23 +335,33 @@ async function handleAuthRedirect() {
     } else {
       // Check if this is a logout redirect return
       const logoutReturnUrl = localStorage.getItem('auth-logout-return-url');
+      console.log('[Auth] Checking logout return - logoutReturnUrl:', logoutReturnUrl);
+
       if (logoutReturnUrl) {
-        console.log('[Auth] Returned from logout redirect');
+        console.log('[Auth] ✅ RETURNED FROM LOGOUT REDIRECT');
         localStorage.removeItem('auth-logout-return-url');
 
         // Check if we need to clear chat storage
         const shouldClearChat = localStorage.getItem('auth-clear-chat-on-return');
+        console.log('[Auth] Should clear chat flag value:', shouldClearChat);
+
         if (shouldClearChat === 'true') {
-          console.log('[Auth] Clearing chat storage after logout...');
+          console.log('[Auth] 🧹 CLEARING CHAT STORAGE AFTER LOGOUT...');
           localStorage.removeItem('auth-clear-chat-on-return');
 
           // Clear all chat-related storage
           clearChatStorage();
+
+          console.log('[Auth] ✅ Chat storage clearing completed');
+        } else {
+          console.log('[Auth] ⚠️ Flag not set or not true - skipping chat clearing');
         }
 
         // Already on the correct page, just update UI
         updateAuthUI();
         return;
+      } else {
+        console.log('[Auth] Not a logout return - normal page load');
       }
 
       // No redirect response, check if user is already logged in
@@ -389,7 +411,11 @@ function isAuthenticated() {
 
 // Clear chat storage (for authenticated and reconnect chat pages)
 function clearChatStorage() {
-  console.log('[Auth] clearChatStorage() called');
+  console.log('');
+  console.log('========================================');
+  console.log('🧹 CLEAR CHAT STORAGE FUNCTION CALLED');
+  console.log('========================================');
+  console.log('');
 
   // Clear localStorage
   try {
