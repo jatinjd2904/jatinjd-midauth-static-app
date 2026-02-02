@@ -207,6 +207,26 @@ function logout() {
     userInfoElement.innerHTML = '';
   }
 
+  // CRITICAL: End chat session with server before logout
+  try {
+    if (window.Microsoft &&
+        window.Microsoft.Omnichannel &&
+        window.Microsoft.Omnichannel.LiveChatWidget &&
+        window.Microsoft.Omnichannel.LiveChatWidget.SDK) {
+
+      console.log('[Auth] 🛑 Closing active chat session on server before logout...');
+
+      // Close the chat to end the conversation on the server
+      window.Microsoft.Omnichannel.LiveChatWidget.SDK.closeChat();
+
+      console.log('[Auth] ✅ closeChat() called');
+    } else {
+      console.log('[Auth] No active widget SDK found - skipping chat close');
+    }
+  } catch (error) {
+    console.warn('[Auth] Error closing chat:', error);
+  }
+
   // Trigger logout event for pages to handle (e.g., clear chat for authenticated chat pages)
   const logoutEvent = new CustomEvent('auth:logout', {
     detail: { timestamp: Date.now() }
@@ -214,8 +234,8 @@ function logout() {
   window.dispatchEvent(logoutEvent);
   console.log('[Auth] Dispatched auth:logout event');
 
-  // IMPORTANT: Wait 3 seconds to ensure storage clearing completes before redirect
-  console.log('[Auth] ⏱️ Waiting 3 seconds for storage clearing to complete...');
+  // IMPORTANT: Wait 3 seconds to ensure chat close and storage clearing complete before redirect
+  console.log('[Auth] ⏱️ Waiting 3 seconds for chat close and storage clearing to complete...');
   setTimeout(() => {
     console.log('[Auth] 🔍 Flag check before redirect:', localStorage.getItem('auth-clear-chat-on-return'));
     console.log('[Auth] 🔍 Return URL before redirect:', localStorage.getItem('auth-logout-return-url'));
@@ -232,7 +252,7 @@ function logout() {
       msalInstance.clearCache();
       window.location.reload();
     }
-  }, 3000); // 3 second delay to ensure storage clearing and event handlers complete
+  }, 3000); // 3 second delay to ensure chat close and storage clearing complete
 }
 
 // Get access token silently
