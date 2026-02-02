@@ -198,33 +198,6 @@ function logout() {
     console.log('[Auth] Not marking for clearing - current path:', currentPath);
   }
 
-  // CRITICAL: End chat session with server before logout
-  try {
-    if (window.Microsoft &&
-        window.Microsoft.Omnichannel &&
-        window.Microsoft.Omnichannel.LiveChatWidget &&
-        window.Microsoft.Omnichannel.LiveChatWidget.SDK) {
-
-      console.log('[Auth] 🛑 Closing active chat session before logout...');
-
-      // Close the chat to end the conversation on the server
-      window.Microsoft.Omnichannel.LiveChatWidget.SDK.closeChat();
-
-      console.log('[Auth] ✅ Chat session closed');
-    } else {
-      console.log('[Auth] No active widget SDK found - skipping chat close');
-    }
-  } catch (error) {
-    console.warn('[Auth] Error closing chat:', error);
-  }
-
-  // Trigger logout event for pages to handle (e.g., clear chat for authenticated chat pages)
-  const logoutEvent = new CustomEvent('auth:logout', {
-    detail: { timestamp: Date.now() }
-  });
-  window.dispatchEvent(logoutEvent);
-  console.log('[Auth] Dispatched auth:logout event');
-
   // Update UI
   updateAuthUI();
 
@@ -234,14 +207,18 @@ function logout() {
     userInfoElement.innerHTML = '';
   }
 
-  // IMPORTANT: Add delay to ensure chat close and event handlers complete before redirect
-  setTimeout(() => {
-    // Verify flag was set before redirecting
-    const flagCheck = localStorage.getItem('auth-clear-chat-on-return');
-    console.log('[Auth] 🔍 Flag check before redirect:', flagCheck);
+  // Trigger logout event for pages to handle (e.g., clear chat for authenticated chat pages)
+  const logoutEvent = new CustomEvent('auth:logout', {
+    detail: { timestamp: Date.now() }
+  });
+  window.dispatchEvent(logoutEvent);
+  console.log('[Auth] Dispatched auth:logout event');
+
+  // Function to proceed with logout redirect
+  const proceedWithLogout = () => {
+    console.log('[Auth] 🔍 Flag check before redirect:', localStorage.getItem('auth-clear-chat-on-return'));
     console.log('[Auth] 🔍 Return URL before redirect:', localStorage.getItem('auth-logout-return-url'));
 
-    // Use logoutRedirect with postLogoutRedirectUri set to current page
     const account = msalInstance.getAllAccounts()[0];
     if (account) {
       console.log('[Auth] 🚪 Calling logoutRedirect to:', currentPage);
@@ -250,12 +227,65 @@ function logout() {
         postLogoutRedirectUri: currentPage
       });
     } else {
-      // No account found, just clear cache and reload
       console.log('[Auth] No account found, clearing cache');
       msalInstance.clearCache();
       window.location.reload();
     }
-  }, 500); // 500ms delay to allow chat close and event handlers to complete
+  };
+
+  // CRITICAL: End chat session with server before logout
+  let chatCloseAttempted = false;
+  try {
+    if (window.Microsoft &&
+        window.Microsoft.Omnichannel &&
+        window.Microsoft.Omnichannel.LiveChatWidget &&
+        window.Microsoft.Omnichannel.LiveChatWidget.SDK) {
+
+      chatCloseAttempted = true;
+      console.log('[Auth] 🛑 Closing active chat session before logout...');
+
+      // Listen for chat close confirmation
+      let chatClosedEventReceived = false;
+      const chatCloseListener = () => {
+        chatClosedEventReceived = true;
+        console.log('[Auth] ✅ Chat close event received - proceeding with logout');
+        proceedWithLogout();
+      };
+
+      // Listen for CloseChat broadcast event
+      if (window.BroadcastService) {
+        const closeChatSub = window.BroadcastService.getMessageByEventName('CloseChat')
+          .subscribe(() => {
+            console.log('[Auth] ✅ CloseChat event received');
+            chatCloseListener();
+            closeChatSub.unsubscribe();
+          });
+      }
+
+      // Close the chat to end the conversation on the server
+      window.Microsoft.Omnichannel.LiveChatWidget.SDK.closeChat();
+
+      // Wait maximum 3 seconds for chat to close, then proceed anyway
+      setTimeout(() => {
+        if (!chatClosedEventReceived) {
+          console.log('[Auth] ⚠️ Timeout waiting for chat close - proceeding with logout anyway');
+          proceedWithLogout();
+        }
+      }, 3000);
+
+    } else {
+      console.log('[Auth] No active widget SDK found - skipping chat close');
+      chatCloseAttempted = false;
+    }
+  } catch (error) {
+    console.warn('[Auth] Error closing chat:', error);
+    chatCloseAttempted = false;
+  }
+
+  // If no chat close was attempted, proceed with normal delay
+  if (!chatCloseAttempted) {
+    setTimeout(proceedWithLogout, 500);
+  }
 }
 
 // Get access token silently
